@@ -1,0 +1,76 @@
+# AntiLeon – Schutzschichten für Paper 26.2.
+# Änderungen mit /antileon reload laden. Paper's eigener Anti-Xray-Block
+# liegt außerhalb der Plugin-Konfiguration; siehe paper-world-defaults.yml.example.
+
+enabled: true
+
+# Leer = alle Welten. Bei Einträgen werden nur diese Bukkit-Weltnamen geschützt.
+worlds: []
+
+cave-shield:
+  enabled: true
+  # Nur dieser Bereich um die echte Serverposition wird unverfälscht gezeigt.
+  # Klein halten, damit Freecam nicht einfach in nahe Höhlen schauen kann.
+  reveal-radius: 6
+  reveal-vertical-radius: 4
+  # 0 bedeutet: jede Luft-/Flüssigkeitszelle unter dem obersten Terrainblock
+  # wird geschützt. Ein höherer Wert lässt einen kleinen Rand sichtbar.
+  surface-buffer: 0
+  hide-liquids: true
+
+ore-shield:
+  enabled: true
+  # Welt-Y-Grenzen des eigenen Sichtschutzes; das Ende ist exklusiv.
+  min-y: -64
+  max-y-exclusive: 320
+  max-scan-blocks-per-tick: 45000
+  max-changes-per-packet: 2048
+
+bypass:
+  permission: antileon.bypass
+  operators: true
+  spectator: true
+
+fake-blocks:
+  overworld-above-zero: STONE
+  overworld-below-zero: DEEPSLATE
+  nether: NETHERRACK
+  the-end: END_STONE
+
+# Diese Blocktypen werden zusätzlich außerhalb des Reveal-Bereichs ersetzt.
+# Die Liste ist absichtlich erweiterbar, damit auch servereigene Sonderblöcke
+# eingetragen werden können (Materialnamen der Paper-API verwenden).
+hidden-blocks:
+  - COAL_ORE
+  - DEEPSLATE_COAL_ORE
+  - COPPER_ORE
+  - DEEPSLATE_COPPER_ORE
+  - RAW_COPPER_BLOCK
+  - IRON_ORE
+  - DEEPSLATE_IRON_ORE
+  - RAW_IRON_BLOCK
+  - GOLD_ORE
+  - DEEPSLATE_GOLD_ORE
+  - RAW_GOLD_BLOCK
+  - LAPIS_ORE
+  - DEEPSLATE_LAPIS_ORE
+  - REDSTONE_ORE
+  - DEEPSLATE_REDSTONE_ORE
+  - DIAMOND_ORE
+  - DEEPSLATE_DIAMOND_ORE
+  - EMERALD_ORE
+  - DEEPSLATE_EMERALD_ORE
+  - NETHER_GOLD_ORE
+  - NETHER_QUARTZ_ORE
+  - ANCIENT_DEBRIS
+  - GILDED_BLACKSTONE
+  - MOSSY_COBBLESTONE
+  - OBSIDIAN
+  - CLAY
+  - CHEST
+  - TRAPPED_CHEST
+  - ENDER_CHEST
+  - SPAWNER
+  - TRIAL_SPAWNER
+  - VAULT
+  - BUDDING_AMETHYST

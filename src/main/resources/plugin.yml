@@ -1,0 +1,40 @@
+name: BlockProtect
+version: 0.1.0
+main: de.blockprotect.BlockProtectPlugin
+api-version: '26.2'
+description: Modular, live-configurable griefing audit for Paper 26.2.
+authors:
+  - BlockProtect
+website: https://papermc.io/
+commands:
+  blockprotect:
+    description: BlockProtect audit, inspection and live configuration.
+    aliases: [bp]
+    usage: /blockprotect help
+permissions:
+  blockprotect.lookup:
+    description: Query BlockProtect audit history.
+    default: op
+  blockprotect.inspect:
+    description: Toggle block inspection mode.
+    default: op
+  blockprotect.config:
+    description: Change BlockProtect settings in-game.
+    default: op
+  blockprotect.purge:
+    description: Purge old audit events.
+    default: op
+  blockprotect.rollback:
+    description: Preview and revert important griefing changes.
+    default: op
+  blockprotect.admin:
+    description: Full BlockProtect administration access.
+    default: op
+    children:
+      blockprotect.lookup: true
+      blockprotect.inspect: true
+      blockprotect.config: true
+      blockprotect.purge: true
+      blockprotect.rollback: true
+libraries:
+  - org.xerial:sqlite-jdbc:3.51.1.0

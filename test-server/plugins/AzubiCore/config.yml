@@ -1,0 +1,2282 @@
+# ==========================================================================
+#  AzubiCore - Hauptkonfiguration
+#  Alle Texte verwenden das MiniMessage-Format (https://docs.advntr.dev)
+#  Waehrung = echte Vanilla-Items. Es wird KEIN Vault/Economy-Plugin genutzt.
+#
+#  Diese Datei liegt zweimal identisch im Projekt: als config.example.yml
+#  zum Nachschlagen und als mitgelieferte Standardkonfiguration. Ein Server
+#  mit bereits vorhandener plugins/AzubiCore/config.yml uebernimmt sie NICHT
+#  automatisch - dort die alte Datei loeschen oder von Hand ergaenzen.
+#
+#  ACHTUNG - im Spiel geaenderte Werte gehen dieser Datei vor:
+#  '/verwaltung einstellungen' kann jeden Wert hier im Spiel aendern. Solche
+#  Aenderungen landen in der Datenbank (Tabelle 'settings', Schluessel
+#  'config.<pfad>') und ueberschreiben beim Start, was hier steht - die Datei
+#  bleibt dabei unangetastet. Wirkt eine Aenderung an dieser Datei nicht, liegt
+#  eine Uebersteuerung vor: im GUI stehen geaenderte Werte in Gold, ein Druck
+#  auf F stellt den Dateiwert wieder her. Wie viele es sind, sagt beim Start
+#  die Konsole.
+# ==========================================================================
+
+general:
+  prefix: "<gradient:#5ee7df:#b490ca><bold>AzubiCore</bold></gradient> <dark_gray>» </dark_gray>"
+  debug: false
+
+# --------------------------------------------------------------------------
+# Modul-Schalter. Ein deaktiviertes Modul registriert weder Events noch Tasks.
+# --------------------------------------------------------------------------
+modules:
+  gemeindekasse: true     # Modul 6 - sollte aktiv bleiben, liefert die Boni
+  fundbuero: true         # Modul 1
+  auftragsboerse: true    # Modul 2
+  schnellbahn: true       # Modul 3
+  versorgungskisten: true # Modul 4
+  koepfe: true            # Modul 5
+  homes: true             # Modul 7
+  spawn: true             # Modul 8
+  welten: true            # Modul 9 - Welt-Namen unten unbedingt pruefen!
+  start: false            # Modul 10 - sperrt den Server! Siehe Warnung unten.
+  zugang: true            # Modul 11 - Whitelist-Meldung und Wartungsmodus
+  hilfe: true             # Modul 12 - /hilfe und die Willkommensnachricht
+  end: true               # Modul 14 - haelt das End zu (Sperre selbst: 'end:' unten)
+  boni: true              # Modul 15 - Speer-Hunger und Happy-Ghast-Tempo
+  # Modul 13 (Verwaltung) steht bewusst nicht in dieser Liste: es ist der
+  # Notausgang, ueber den sich alle anderen wieder einschalten lassen.
+  # Details ganz unten unter 'verwaltung:'.
+
+# --------------------------------------------------------------------------
+# Wer zahlt? - je Modul mit Kosten einzeln
+# --------------------------------------------------------------------------
+# Jedes Modul mit Kosten hat eine Permission, die davon befreit. Standard ist
+# ueberall 'op', OPs zahlen also von Haus aus nichts:
+#
+#   fundbuero        azubicore.fundbuero.gratis     Karte und Rueckkauf
+#   auftragsboerse   azubicore.auftrag.gebuehrfrei  Gebuehr pro Auftrag
+#   koepfe           azubicore.heads.gratis         Preis pro Kopf
+#   homes            azubicore.homes.gratis         /sethome und /home
+#   spawn            azubicore.spawn.free           /spawn
+#
+# Hier stellst du je Modul ein, ob diese Befreiung ueberhaupt gilt:
+#   true  = ALLE zahlen, auch OPs (die Permission wird ignoriert)
+#   false = wer die Permission hat, zahlt nicht
+#
+# Umschalten im laufenden Betrieb: /verwaltung kosten [modul] an|aus, oder
+# im GUI unter /verwaltung gui -> "Kosten und Befreiungen". Das landet wie
+# die Modul-Schalter in der Datenbank und hat Vorrang vor dieser Datei;
+# '/verwaltung kosten [modul] standard' loescht die Uebersteuerung wieder.
+kosten:
+  ops-zahlen:
+    fundbuero: false
+    auftragsboerse: false
+    koepfe: false
+    homes: false
+    spawn: false
+
+# ==========================================================================
+# MODUL 1 - FUNDBUERO (Insurance & Recovery)
+# ==========================================================================
+fundbuero:
+  # Wie lange ist das Grab exklusiv fuer den Besitzer reserviert.
+  protection-hours: 24
+  # Wie lange bleibt der Datenbank-Eintrag nach Ablauf erhalten (Aufraeumen).
+  keep-record-days: 14
+  # Anzahl der Graeber, die im /fundbuero GUI angezeigt werden.
+  max-graves-shown: 5
+  # Erfahrungspunkte im Grab aufbewahren statt fallen lassen.
+  capture-experience: true
+  # Wird ein zweiter Kistenblock gesetzt, wenn 27 Slots nicht reichen?
+  allow-second-chest: true
+  # Maximale Suchhoehe nach oben, falls der Todesblock nicht bebaubar ist.
+  search-up: 8
+  # Welten, in denen keine Graeber gesetzt werden (z.B. Minispiel-Welten).
+  disabled-worlds: []
+
+  costs:
+    # Bergungskarte: zeigt die exakten Koordinaten des Todesortes.
+    map:
+      material: DIAMOND
+      amount: 3
+    # Direkt-Rueckkauf: stellt das Inventar sofort wieder her.
+    buyback:
+      material: DIAMOND
+      amount: 32
+
+# ==========================================================================
+# MODUL 2 - AUFTRAGSBOERSE (Wandering Contractor, mit Treuhand/Escrow)
+# ==========================================================================
+auftragsboerse:
+  # Maximal offene Auftraege pro Spieler.
+  max-open-per-player: 3
+  # Laufzeit eines Auftrags in Tagen. Danach wandert die Treuhand zurueck.
+  expire-days: 7
+  # Grenzen fuer Nachfrage und Belohnung.
+  max-request-amount: 3456   # 54 Stacks
+  max-reward-amount: 512
+  # Materialien, die als Belohnung erlaubt sind (leer = alles erlaubt).
+  # Bewusst leer: als Belohnung taugt alles, was nicht in der schwarzen Liste
+  # steht. Das Item wandert beim Erstellen sofort in die Treuhand, es kann also
+  # niemand mit einer Belohnung werben, die er gar nicht besitzt.
+  allowed-reward-materials: []
+  # Materialien, die NIE angefordert oder hinterlegt werden duerfen.
+  blacklisted-materials:
+    - BEDROCK
+    - COMMAND_BLOCK
+    - CHAIN_COMMAND_BLOCK
+    - REPEATING_COMMAND_BLOCK
+    - STRUCTURE_BLOCK
+    - BARRIER
+    - LIGHT
+    - DEBUG_STICK
+    - SPAWNER
+  # Nur unveraenderte Items akzeptieren (keine Namen, keine Verzauberungen).
+  require-plain-items: true
+
+  # --- Grossauftraege ------------------------------------------------------
+  # Geliefert wird in Fuhren: 36 Inventarplaetze mal Stapelgroesse des
+  # geforderten Materials. Bei Eichenstaemmen sind das 2304 pro Fuhre, bei
+  # Enderperlen (16er-Stapel) 576, bei Betten (nicht stapelbar) 36.
+  #
+  # Was NICHT reinpasst, bleibt als Teillieferung in der Treuhand liegen, bis
+  # der Lieferant die naechste Fuhre bringt. Die erste Fuhre reserviert den
+  # Auftrag fuer ihn - sonst waere nicht zu entscheiden, wem die Belohnung
+  # zusteht, wenn zwei Spieler je die Haelfte bringen. Gibt er auf
+  # (/auftrag abbrechen ID) oder laeuft der Auftrag ab, kommt seine
+  # Teillieferung ins Postfach zurueck und der Auftrag ist wieder frei.
+  #
+  # Wie viele Fuhren ein Auftrag hoechstens kosten darf. Groessere Auftraege
+  # lassen sich gar nicht erst anlegen - lieferbar waeren sie, aber niemand
+  # faehrt 96 Mal. 0 = keine Begrenzung (dann gilt nur max-request-amount).
+  max-lieferungen: 4
+
+  # Gefuellte Shulkerkisten im Abgabefenster akzeptieren. Ihr Inhalt zaehlt
+  # mit, die leere Kiste kommt zurueck, Fremdes darin bleibt drin. Eine Kiste
+  # fasst 27 Stapel - damit passt ein 3456er-Auftrag in zwei Kisten.
+  shulker-abgabe: true
+
+  # Gebuehr fuers Ausschreiben eines Auftrags.
+  #
+  # Warum: ohne Gebuehr kostet ein Auftrag nichts ausser der Belohnung, die man
+  # ohnehin wiederbekommt. Die Boerse wird dadurch zum Tauschautomaten - zwei
+  # Spieler schieben sich Items ueber je einen Auftrag hin und her. Die Gebuehr
+  # macht genau das teuer; beim echten Auftrag ("ich brauche 5 Stapel Sand")
+  # faellt sie neben der Belohnung kaum ins Gewicht.
+  #
+  # Faellig wird sie beim Erstellen und kommt NICHT zurueck - weder beim
+  # Abbrechen (/auftrag abbrechen) noch beim Ablaufen. Zurueck kommt in beiden
+  # Faellen nur die hinterlegte Belohnung. Waere die Gebuehr erstattungsfaehig,
+  # waere sie geliehen statt bezahlt und wuerde niemanden abhalten.
+  #
+  # menge: 0 schaltet die Gebuehr ab. Wer azubicore.auftrag.gebuehrfrei hat
+  # (Standard: OP), zahlt nie.
+  gebuehr:
+    material: DIAMOND
+    menge: 1
+
+# ==========================================================================
+# MODUL 3 - SCHNELLBAHN (Dynamic High-Speed Rail)
+# ==========================================================================
+schnellbahn:
+  # Vanilla-Maximalgeschwindigkeit einer Lore.
+  vanilla-max-speed: 0.4
+  # Ab wie vielen zusammenhaengend gefahrenen Schienen-Bloecken wird geboostet.
+  activation-distance: 30
+  # Faktor auf die Vanilla-Geschwindigkeit im Schnellfahrmodus (3.0 - 4.0).
+  boost-factor: 3.5
+  # Faktor in Kurven / vor Prellbaenden.
+  curve-factor: 1.0
+  # Wie viele Bloecke vorausgeschaut wird, um Streckenenden zu erkennen.
+  lookahead-blocks: 5
+  # Nur Loren mit Passagier beschleunigen (verhindert Boost fuer Item-Loren).
+  require-passenger: true
+  # Sanfte Beschleunigung: die Lore wird pro Tick leicht angeschoben.
+  assist: true
+  assist-acceleration: 1.06
+  # Partikel waehrend der Schnellfahrt.
+  particles:
+    enabled: true
+    type: ELECTRIC_SPARK
+    every-n-moves: 3
+    count: 4
+  # Welten, in denen die Schnellbahn deaktiviert ist.
+  disabled-worlds: []
+
+# ==========================================================================
+# MODUL 4 - VERSORGUNGSKISTEN (Supply Drops)
+# ==========================================================================
+versorgungskisten:
+  # Abstand zwischen zwei Kisten in Minuten.
+  interval-minutes: 240
+  # Erste Kiste nach Serverstart (Minuten).
+  first-delay-minutes: 20
+  # Nur ausloesen, wenn mindestens so viele Spieler online sind.
+  min-players-online: 1
+  # Kiste verschwindet nach dieser Zeit, falls niemand sie findet (Minuten).
+  lifetime-minutes: 90
+  # Welten, in denen Kisten spawnen duerfen.
+  worlds:
+    - world
+  # Suchradius um den Weltspawn (Bloecke).
+  min-distance: 300
+  max-distance: 2500
+  # Wie oft eine sichere Position gesucht wird, bevor abgebrochen wird.
+  max-attempts: 25
+  # Genauigkeit der Broadcast-Koordinaten (auf dieses Raster gerundet).
+  coordinate-precision: 100
+  # Biome, deren Schluessel eines dieser Fragmente enthaelt, werden gemieden.
+  blocked-biome-keywords:
+    - ocean
+    - river
+    - deep_dark
+  particles:
+    enabled: true
+    type: END_ROD
+    height: 12
+    period-ticks: 15
+
+  loot:
+    # Anzahl der gewichteten Zuege pro Kiste. Meilensteine der Gemeindekasse
+    # (Modul 6) legen noch etwas drauf.
+    min-rolls: 6
+    max-rolls: 10
+    #
+    # Zwei Sorten Eintraege:
+    #   weight: gewichteter Anteil am normalen Ziehen
+    #   chance: Wahrscheinlichkeit IN PROZENT, einmal pro Kiste, unabhaengig
+    #           von der Zahl der Zuege - fuer echte Raritaeten
+    # Ein Eintrag mit 'chance' nimmt am gewichteten Ziehen nicht teil.
+    entries:
+      # ---- Grundversorgung ------------------------------------------------
+      - material: IRON_INGOT
+        min: 8
+        max: 24
+        weight: 20
+      - material: COAL
+        min: 16
+        max: 48
+        weight: 18
+      - material: BREAD
+        min: 8
+        max: 16
+        weight: 16
+      - material: COPPER_INGOT
+        min: 8
+        max: 24
+        weight: 14
+      - material: GOLD_INGOT
+        min: 4
+        max: 12
+        weight: 14
+      - material: ARROW
+        min: 16
+        max: 32
+        weight: 12
+      - material: COOKED_BEEF
+        min: 6
+        max: 12
+        weight: 12
+      - material: EXPERIENCE_BOTTLE
+        min: 4
+        max: 16
+        weight: 10
+      - material: LAPIS_LAZULI
+        min: 6
+        max: 18
+        weight: 10
+      - material: REDSTONE
+        min: 8
+        max: 24
+        weight: 10
+      - material: DIAMOND
+        min: 1
+        max: 4
+        weight: 8
+      - material: EMERALD
+        min: 2
+        max: 8
+        weight: 8
+      - material: OBSIDIAN
+        min: 2
+        max: 6
+        weight: 7
+      - material: AMETHYST_SHARD
+        min: 2
+        max: 8
+        weight: 6
+      - material: HONEYCOMB
+        min: 3
+        max: 9
+        weight: 6
+      - material: ENDER_PEARL
+        min: 1
+        max: 3
+        weight: 6
+      - material: SLIME_BALL
+        min: 2
+        max: 8
+        weight: 6
+      - material: GOLDEN_CARROT
+        min: 3
+        max: 8
+        weight: 6
+      - material: TNT
+        min: 2
+        max: 6
+        weight: 5
+      - material: CHERRY_SAPLING
+        min: 1
+        max: 3
+        weight: 5
+      - material: MANGROVE_PROPAGULE
+        min: 1
+        max: 3
+        weight: 5
+      - material: AZALEA
+        min: 1
+        max: 4
+        weight: 5
+      - material: GLOW_INK_SAC
+        min: 2
+        max: 6
+        weight: 4
+      - material: NAME_TAG
+        min: 1
+        max: 2
+        weight: 4
+      - material: BLAZE_ROD
+        min: 1
+        max: 3
+        weight: 3
+      - material: SADDLE
+        min: 1
+        max: 1
+        weight: 2
+      - material: MUSIC_DISC_CAT
+        min: 1
+        max: 1
+        weight: 2
+      - material: MUSIC_DISC_MELLOHI
+        min: 1
+        max: 1
+        weight: 2
+      # Kosmetik-Gutschein fuer den Koepfe-Katalog (Modul 5)
+      - voucher: heads
+        min: 1
+        max: 2
+        weight: 6
+
+      # ---- Raritaeten (chance in Prozent, einmal pro Kiste) ---------------
+      # Die Schmiedevorlagen. Zusammen kommen alle Vorlagen auf rund 5% pro
+      # Kiste - eine ganz bestimmte zu bekommen bleibt eine Seltenheit.
+      - material: NETHERITE_UPGRADE_SMITHING_TEMPLATE
+        chance: 0.3
+      - material: SILENCE_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.2
+      - material: WARD_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.2
+      - material: WAYFINDER_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.2
+      - material: SHAPER_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.2
+      - material: RAISER_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.2
+      - material: HOST_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.2
+      - material: FLOW_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.2
+      - material: BOLT_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.2
+      - material: SENTRY_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.4
+      - material: DUNE_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.4
+      - material: COAST_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.4
+      - material: WILD_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.4
+      - material: EYE_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.4
+      - material: VEX_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.4
+      - material: TIDE_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.4
+      - material: SNOUT_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.4
+      - material: RIB_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.4
+      - material: SPIRE_ARMOR_TRIM_SMITHING_TEMPLATE
+        chance: 0.4
+      # Sonstige Raritaeten
+      - material: ENCHANTED_GOLDEN_APPLE
+        chance: 1.0
+      - material: HEART_OF_THE_SEA
+        chance: 0.5
+      - material: ECHO_SHARD
+        min: 2
+        max: 4
+        chance: 1.0
+
+# ==========================================================================
+# MODUL 5 - KOEPFE-KATALOG (Chisel & Bits Light)
+# ==========================================================================
+koepfe:
+  # Preis pro Kopf.
+  price:
+    material: EMERALD
+    amount: 1
+  # Gutschein-Item, das per Rechtsklick den Katalog kostenlos oeffnet.
+  voucher:
+    material: PAPER
+    name: "<gradient:#f7971e:#ffd200><bold>Kosmetik-Gutschein</bold></gradient>"
+    lore:
+      - "<gray>Rechtsklick, um einen Kopf"
+      - "<gray>kostenlos einzuloesen."
+
+  # Kategorien. 'milestone' verweist auf eine Meilenstein-ID der Gemeindekasse
+  # (Modul 6). Solange dieser nicht freigeschaltet ist, bleibt die Kategorie zu.
+  #
+  # 'texture' akzeptiert drei Schreibweisen:
+  #   1. Voller URL   : https://textures.minecraft.net/texture/<hash>
+  #   2. Nur der Hash : <hash>            <- wird hier verwendet
+  #   3. Base64-Value : eyJ0ZXh0dXJlcyI6ey...
+  #
+  # Alle Hashes unten stammen von minecraft-heads.com und wurden einzeln gegen
+  # https://textures.minecraft.net verifiziert (HTTP 200). Eigene Koepfe einfach
+  # nach demselben Muster ergaenzen - ein ungueltiger Hash erzeugt lediglich
+  # einen Standard-Kopf, keinen Fehler.
+  #
+  # Je Kategorie liegen 45 Koepfe - genau eine Seite im Katalog.
+  categories:
+
+    technik:
+      display: "<gray>Technik"
+      icon: REDSTONE
+      slot: 10
+      heads:
+        - name: "<white>Computer"
+          texture: 289804b7986a1fe08e9e2966dcd286f72edb52870ceae74cc6f0e0574cbf41e3
+        - name: "<white>Monitor"
+          texture: d44ef9047089b14ad8ba579f1c71003a6e17b159e57c243d8a239c2bd08c2c3
+        - name: "<white>Keyboard"
+          texture: 678ea2c8f1df74a20769636048554f68f805ef5ac079d765b7c518c1dbe485fe
+        - name: "<white>Television"
+          texture: 31e75050ca9f907646f74cceb5e4be46dbb1e85c009a9c40f5a1839b273de63e
+        - name: "<white>Radio"
+          texture: d16cee17aa85e00580321759c16de8cd47790f46961afcfb8fb5f3ef2f667f55
+        - name: "<white>Speaker"
+          texture: 9aa6ab4a8af178951e5a2ac1955bb65a9544c6bbd3ac2a74a91d182fbda79708
+        - name: "<white>Camera"
+          texture: 2433b16d98e0d9d335027f23332e208b7c3fff0d7984792ea48c93ca5cbcf1e1
+        - name: "<white>Printer"
+          texture: 6744adb01a90e46902d8851beb7cdffd080792909cf44ba46d3374c8615a9259
+        - name: "<white>Server"
+          texture: 938b05e50ef1c8c02ce30d8d09b846e7e9145ac4117157f6530b4d8e1e329854
+        - name: "<white>Satellite"
+          texture: 91af4639c84b9322bf45fc2d381f2ff5729fc16736c3278211dd2e4f31fdaede
+        - name: "<white>Robot"
+          texture: d9ba61ae315ebfd835067c4c2e321b93ebbaeefdcfcf7181f99532e65c728ba
+        - name: "<white>Engine"
+          texture: 22e32d66699544433a14f8e5a6d482dc9bc5b34ea2f31fd91144001ed3bfdf2f
+        - name: "<white>Motor"
+          texture: 8cbca012f67e54de9aee72ff424e056c2ae58de5eacc949ab2bcd9683cec
+        - name: "<white>Battery"
+          texture: 7b8a97fe224a63ecf5ec75cfc0c78ea905da3188ac266a750be0a65f22d38dfd
+        - name: "<white>Microphone"
+          texture: 3778b7607121e8b6f1a754380f29b175f27adfe27cd8ef23e136f3cea0d85232
+        - name: "<white>Drone"
+          texture: 5545078a2f72f43ac629f5277eb7857d05d0041e5af77f24fec81f4bf465cb65
+        - name: "<white>Generator"
+          texture: 7f9f356f5fe7d1bc92cddfaeba3ee773ac9df1cc4d1c2f8fe5f47013032c551d
+        - name: "<white>Microscope"
+          texture: 21cb9b98c7d89e69861dce4c42c22631027fe23c540f11ac31a1a8b1afac92e4
+        - name: "<white>Projector"
+          texture: 98636123b1a3755abd8aef6d85b2a85bf10f486edefdd1a3cef7679d825
+        - name: "<white>Telephone"
+          texture: 707c135b76c53a789a1ee273992c30f783c169ca94b8b7710f0f24de614248a
+        - name: "<white>Toaster"
+          texture: 7c9dd989e6681ee63b86fe63fc5d92ce09ee6f413238f6dc6765c28897d661e0
+        - name: "<white>Lightbulb"
+          texture: 1cfda72d1feb4a9b4b71207d0793a4503357c8e8bec440474e7fd60ebe618472
+        - name: "<white>Circuit Boards"
+          texture: 8e081041d74012c3384f52cc2bb3b9964df628fe87c6f00a3987fc7c6f47e34a
+        - name: "<white>Solar Panel"
+          texture: 7ef65cd50b885b705e558e95836a12477acc8ba36eae588b22569496c7043680
+        - name: "<white>Control Panel"
+          texture: b77653278d7c6399c70d732782f33b7cd408b2b220f96e3b523139b61770a329
+        - name: "<white>Espresso Machine"
+          texture: d600f0d2b2ab524b219e0fa808c80b26e7236780681867a0617f73ce3671cd2f
+        - name: "<white>Creepy Monitor"
+          texture: e97fe8fc488c5fd5c517b2fda14bcd3268ba5ded6050f88f3cd0d913dcb17a30
+        - name: "<white>Console Panel"
+          texture: e479d4ef2413fcdc4b39cdc20c5564b5b8d24c1edf4dcec1d063b3e2d8c25f53
+        - name: "<white>Green GameBoy"
+          texture: e1fba0bc83d692620299f7f8a89bc1a9204617e24e6ddf5110f7dc1f105d11c8
+        - name: "<white>Pink Telephone"
+          texture: c3c12eb30cf60c0826545dc6e03880fe01796fc27b1ad67c72a26ca2dba56fdf
+        - name: "<white>Old Monitor"
+          texture: d6eafd1d1384dbcf199fdb035b668c781e8a671ba7b49dd4e4a139bd3c0c8a
+        - name: "<white>Axolotl Monitor"
+          texture: f49af3440f7fc217360679fdffec5b5da3b43944f2fd910f42752ea0f9f73e4
+        - name: "<white>Easter Monitor"
+          texture: 47b0f8a2f0be169490ce59a39be4e8bb13f1f9d25b1ada7984b74e2fdb88b9a4
+        - name: "<white>Gray Console"
+          texture: 4800cc6181f7525f7edbe2208a6d67ff1818b4cb9023df37fa500da5dadac331
+        - name: "<white>Machine Wires"
+          texture: 497688091cc7b0bfc0488736b7a23466840412e0812216a4c2a1e5dbb86c5172
+        - name: "<white>Camera Plushie"
+          texture: 3ba311761e3234810bb2b451f6bd0b506f8cb48e1195bef784eb7e2c6095d277
+        - name: "<white>Machine Block"
+          texture: 6ddd4a12da1cc2c9f9d6cd49fc778e3a11f3757de6dd312d70a0d47885189c0
+        - name: "<white>Camera Present"
+          texture: 697e3e9d1339023e8b2a4441599361f9d4b939c137482e719ebe238c212a73e2
+        - name: "<white>Ender Generator"
+          texture: a38ffe7d607d10bc9712dcb19e8b5df1e59d4d71d57ce93eadba1ac766b7106e
+        - name: "<white>Vintage Radio"
+          texture: 0a2801cd0dfbc5296c3bf6141c477cfcf73ce87f785b09a17415cd8e36191
+        - name: "<white>Dark Monitor"
+          texture: fd4fa1c05000fd890bd24352fe63761716a911fd5a0589f0c5d0a3edb957b5ac
+        - name: "<white>Spelunker Gear"
+          texture: 74bd3d82b2e980641648d4b333cafbe186370eae494aeba32a6cecd8b1982268
+        - name: "<white>Robot Plushie"
+          texture: 486178422d9eba7655c574d0dd4e85c5ec7fb4e4c4dcac32f62822705195f5d5
+        - name: "<white>Orange Battery"
+          texture: ffa9d66e25974c4d08a01ef07c61a76276993facb3ed53a159ed9731e09fc83
+        - name: "<white>GameCube Controller"
+          texture: 964f234edddb6583a2f710d80c6e79b02705dc679cc8b63c62de8c313ef07b49
+
+    essen:
+      display: "<gray>Essen und Trinken"
+      icon: BREAD
+      slot: 12
+      heads:
+        - name: "<white>Bread"
+          texture: 2aef61f86ec732b85e2cea1578690e9649d62ec1473f833197809838f756fe17
+        - name: "<white>Cake"
+          texture: f92087698ac1c6e7bc124839b8861850eaf29460274e6ad12d29fc19d1ea3f56
+        - name: "<white>Coffee"
+          texture: 477c5a3a9c37f7169c9115499897bf6b9d1e2f5295d99960bce3498fc0d6fe65
+        - name: "<white>Pizza"
+          texture: 65711773d0b7d30af1c24e9aa5a0dcb788e9ed8b7cf73775c266780bc0089d97
+        - name: "<white>Burger"
+          texture: add0b236fd2ccce103d05b794445da4745816d4c5a19ea9e4067b2e00adac041
+        - name: "<white>Cookie"
+          texture: 4b26eef1d0afd261d072917f91605a83c20840765b69ce36a57979b0373c412c
+        - name: "<white>Sushi"
+          texture: de668a15756690f766202fe82b5c0f25d53fb7e61c858f5cc1ca43a4c51b904c
+        - name: "<white>Taco"
+          texture: cd72ad7431575a3a81607a409c610b4eaf29830880cdba1e51d81bbbc97dfda4
+        - name: "<white>Donut"
+          texture: 1d0402e08316d9a06bbc495b1c148947caa5b6348f1e8d13e253a81b033453fe
+        - name: "<white>Beer"
+          texture: b2b0a1ca399f35dc54519c4c996f9629a510c49938151f759ec8f07041e78566
+        - name: "<white>Milk Tea"
+          texture: d6d91d3dbfbc01d7bd4a8691f93d7f96d4a5d2bbd3e16faa8ec7c2e58c4907bd
+        - name: "<white>Red Juice"
+          texture: b8ff4e4617e551a0666936b575db1c2f3c2130ec5d27c9659a847201c4039fb
+        - name: "<white>Apple"
+          texture: 4fa848bffd35fda901c6306e3d5241a9e39b5a3e384041a89ef1448917a0ef9a
+        - name: "<white>Banana Cake"
+          texture: df0987251def1040e12aeb9902f4ae2ac6bd9fa2fd961f0e2b8bec808ab9cd2e
+        - name: "<white>Cheese"
+          texture: 2260c86059909b70a833eec1d0ef2bf7ebbfcecb346d646d3e6640e45bbbdb91
+        - name: "<white>Egg"
+          texture: 1e170f36f66718f8a69c25b8a99e29d306618553c23b1fe070cfeb359cca0e7a
+        - name: "<white>Sandwich"
+          texture: f7b9f08ada4e8ba586a04ed2e9e25fe8b9d568a665243f9c603799a7c896736
+        - name: "<white>Soup"
+          texture: 2de767ce9ed74afd6335a1a07523a9ba1fd3e30f969ffbcab58f6ed86f443249
+        - name: "<white>Bottle of Wine"
+          texture: 21f26fce875006a46090be4d0cb2d355a2dc5926def8be1901d619948f2
+        - name: "<white>Salad"
+          texture: 1fe92e11a67b56935446a214caa3723d29e6db56c55fa8d43179a8a3176c6c1
+        - name: "<white>Potato Pancake"
+          texture: 71d68fc451d5d6a57a6815d38160504f74e69c175cc72b89dacf4c13996ded53
+        - name: "<white>Waffle"
+          texture: 138f0997663524dc9a5f08dee24ca78a02c0f3e14efd09cf1ce7fc0e7d08ac25
+        - name: "<white>Croissant"
+          texture: 2faaae94779138d0e144f4fbfa6295e9e43d5054fa6eb0a64421b546c88c5b48
+        - name: "<white>Pretzel Bun"
+          texture: b02181cbbf622fc3a773ff355f077cd720404e8f402f81b079470e78349a4256
+        - name: "<white>Cupcake"
+          texture: 3d5b795ef7b26d5844cc228d30c44a55511a9c86929fd09815ec480fc9df01ef
+        - name: "<white>Muffin"
+          texture: 9d2c4a6da698977b859b69769d6344fdad74b52ab7752d755e57cf8a82ebdf
+        - name: "<white>Strawberry"
+          texture: d56cfebed936fa48183bd827dc48c8098b52452e97ee3060c54f88a7cda8498f
+        - name: "<white>Grapes"
+          texture: 3e80c73b765d9f2e2a1ae6d9df96c5fbc6126ee54f9df0a46bb1f00ef0b0279e
+        - name: "<white>Watermelon"
+          texture: fa51cd59142ea797573a2ffce69518a2b4c6940d790e78a2ee8504163500d1d9
+        - name: "<white>Tomato"
+          texture: b734175ff074f918c30842d91cc847913136f5d7179e8200e382b0d31e29ed0e
+        - name: "<white>Chocolate"
+          texture: af19ceeabf2ecb020610b8aabc9299264fa670048c010c9699ce687fc9bf351e
+        - name: "<white>Tea"
+          texture: 635b0e058ea2176796d9dd26ed74bd3dd526a6cb12f2c4c65fe2105fa010c863
+        - name: "<white>Cocktail"
+          texture: bdafa7d31c6346e37b64818a548343cfb77ce670ce1d50a665fbe8a14c5549
+        - name: "<white>Lemonade"
+          texture: daa5aae312d94fbfe645c32dd06a889c8be7a242517fbe9210070afbd95c816c
+        - name: "<white>Popcorn"
+          texture: d765eccdabcc63b11a7f62c9cbb87784ffca451a7e5b30a5d24c3c8071e6ee34
+        - name: "<white>Ice Cream"
+          texture: a0f407e51040ea8ebe7779ead24801a4ba7866769382208ce3cfdb688a5f23f3
+        - name: "<white>Hot Dog"
+          texture: 15a995f41c4630e879f34dbac41f92317558534f2d4d7a468b670e1dc52177
+        - name: "<white>Bowl of Noodles"
+          texture: e8e0102a90db82919fdde976a7602c513d301a0cdae97ef259218650fcea8
+        - name: "<white>Beef Steak"
+          texture: e1cfc7c53b7b70b526fb15fdb2bb3579cd97a8954e712820bab6bd3bcbba9c4
+        - name: "<white>Honey"
+          texture: a4cb79222893bb4fdd8968cc3e294285ddc6fcad05437eefeab323b29fe38
+        - name: "<white>Cute Bread"
+          texture: d39c4c39452196fcdf550e33a38d7eb91a8429b0e263ee0b41277c2eb53d7594
+        - name: "<white>Chocolate Ball"
+          texture: 71b07c08b078a9274aacb4d84687c2a4f3b308f72b4cf93338b1a5f5ae330e1
+        - name: "<white>Banana Milkshake"
+          texture: b960b77ec05b602b55f0f363c9f864a1ab7264a1fbe4c3b49229ba74312ae5f8
+        - name: "<white>Pet Bowl"
+          texture: c4c84eac68aedd165548597e57618c385ff6c4fef1e16d9ec3b32fe94296c
+        - name: "<white>Pizza Mediana"
+          texture: d3708fb14456ef5d3f7b43d73eb88b3acae7a6aac0ed0ed7a30c95a193a9a52c
+
+    einrichtung:
+      display: "<gray>Einrichtung"
+      icon: OAK_DOOR
+      slot: 14
+      heads:
+        - name: "<white>Table"
+          texture: 70d055f3e45d9bdd188f29fe522ace94374171446d4db3f7109c8db3b866b78b
+        - name: "<white>Lamp"
+          texture: bab2c38c5fd93ce8a492c3df3c9c220406e9aedaa1a20436f5c911354a0a44f8
+        - name: "<white>Bookshelf"
+          texture: cc95b13622c65b15a72522c147abb7d94a93065f2deb24db9d137675a8aec4b8
+        - name: "<white>Cabinet"
+          texture: 533ecb558f21c918977987e974f2e6bd128eb9d9c05414e946dd786ebdb4
+        - name: "<white>Mirror"
+          texture: ea044128e677b1d043830d72a1c65a251eb8404becb72814571330218ef9b856
+        - name: "<white>Clock"
+          texture: cf5b1dc7af11ebb40252c7b848d4c5674e6487d3833192a5e624aef57f47af0d
+        - name: "<white>Vase"
+          texture: 4181f9f7c985476b997a1eb67d898f18eafb7c19505029ce1bd5272c1d31
+        - name: "<white>Candle"
+          texture: 2b7dbcda454ea7b38abc66cdfed8e4e6c01294f6a962ec66ef226510ae37171b
+        - name: "<white>Pillow"
+          texture: 903e8a2d0f98fc51e4bdf20787bf3e0582ff234c337c5ad963c1075f66ba370d
+        - name: "<white>Desk Fan"
+          texture: 589d40d5bc2898086f42eb387ede9aa59d2bf23db64e11c098a370a4cbe10e0c
+        - name: "<white>Oak Stool"
+          texture: 5f48199139bf2b6cd44e74aa2498bacc50d1edec821ec93449f39d6c1c6f990e
+        - name: "<white>Fireplace"
+          texture: 508a37d3799f88fcfe6137ff07da0fc1745a5ae01658a64a9cf8e9f50a835b0e
+        - name: "<white>Painting"
+          texture: 8b5305701f452388c2e4c46e69a7348ece88ec9979848ebf21df73e3172e76ff
+        - name: "<white>Kitchen Sink"
+          texture: f74acd8dc239816e7f1519b1e0c514ca54358ba5ff73d69852305a77a1b94e
+        - name: "<white>Toilet"
+          texture: f56e23e275903deade1dd3010a8f2bd6f5654131c472874b0b6299062c20b85d
+        - name: "<white>Oven"
+          texture: 2f5cffcc555c21e17a68f411ad5c19f089d36f42c9e04cd5c5ee6cd77439970e
+        - name: "<white>Mini Fridge (pink)"
+          texture: b2cd636157d49607b768012c1aeebc7ba989387787abf472a529ffc9cc5d2955
+        - name: "<white>Nightstand"
+          texture: f29a53b891f77aecc6eecf98e01549453f45dea506fbb24d8e98ead3161a758f
+        - name: "<white>Lantern"
+          texture: fec81c697d5ed5135ad74704fd8a5db10fb9d2885d3b38c87d9d890e33f5ed57
+        - name: "<white>Basket"
+          texture: 31385a7afb3552faf71c2c5a8e6a5b1d2e672c786e8074433eb5839ace83b4
+        - name: "<white>Crate"
+          texture: 281a6f709bed05d208d129627d0af2336ea8b9c51ad2a42bbf5aded51b76549c
+        - name: "<white>Barrel"
+          texture: 2884ada4c74c0f961469262d956977bafb0b2d7fed9c7bdf35f45199e9f6ddbb
+        - name: "<white>Stove"
+          texture: 8f9da46d97461a1be10600cc546a9d4613e16cfb5719eeb39042e501836008ca
+        - name: "<white>Shower (gold)"
+          texture: d711a3b83861b9a0948b51e333241e9f6d345ca477989916a8cc19c045e31962
+        - name: "<white>Towel"
+          texture: d11c3e3fe0c076c43e346087a31f5ae3211f3089f3159d39dbc1d57d697e12f7
+        - name: "<white>Trash Can"
+          texture: 3e17932e01422531653739d3becfbb5cf78f5f76a3d7b769e2f661f52c2af2da
+        - name: "<white>Blue Crate"
+          texture: 427957aedddc173c7294afda6e3fafca6cbc9c3198d0362e2eb316560b497755
+        - name: "<white>Granite Vase"
+          texture: 856ac5c57ab5833688bf3254f8ce2ab13d2fb88c4ae3aade31abc1547539a675
+        - name: "<white>Rainbow Crate"
+          texture: bdca3f370bfc0cadee7fd014579b64271649b6e7c0290d8e1acdd6f27b476bf2
+        - name: "<white>Ammo Crate"
+          texture: bb89d88ea2c78c36f4253c75ec85493c824028cd9e0c804c0c1bdfe065e3e8f6
+        - name: "<white>Clownfish Bowl"
+          texture: 3b6533013c34e732977857d90d7337867a70d35bd90a845107863318ff7ecdbe
+        - name: "<white>Lamp Shade"
+          texture: b340828c61a721910d763961b8cc4f46b05ce1a91eb2f5da690b528212f6e620
+        - name: "<white>Candy Bowl"
+          texture: 7df6bc7adc4ab260e75b3f4e72cdbff26fa7a607513f6c73f737840c58d8a604
+        - name: "<white>Food Basket"
+          texture: b4da8306092cc54aced62ce263ff1f574a1f890ea58dc43030ba5079726bab39
+        - name: "<white>Axolotl Bucket"
+          texture: b2ae0ded17cac2503c0da879f2dbf038e07af7aab2d9c7926ee3074b76129057
+        - name: "<white>Lava Lamp"
+          texture: 1968f3b8f922cb6e770d8b64fc007d6d5eea5fe2dcc575aa946d1efffb01a4d4
+        - name: "<white>TNT Crate"
+          texture: e9e348c49951a201bedf2c7032efe8d29d07e7604ed57cc6a48c4abc928016df
+        - name: "<white>Coffee Maker"
+          texture: da6664215cc1a1de2e8b8710e9e773ed20b2348c24e27e0ba8c8a5ddfe1ed6
+        - name: "<white>Mossy Clock"
+          texture: 18ea9b69eb0b0111c21014a2f7562f25647a8495bdb6bf1474bf434cb815ff1e
+        - name: "<white>Lab Table"
+          texture: 247106a8274db6bcbcd8a466d97e90023101bb5a5c1519cda9ed2c20bed9f1d8
+        - name: "<white>Street Lantern"
+          texture: 13633dbea4485c67ebbeb4a69dd9b8a44de5a2f24405e6dae470bdfad5585859
+        - name: "<white>Pot"
+          texture: 852829240f7731ee14178822556d4b6fc8bfc09aacd8110efa0aa89af9f06ce9
+        - name: "<white>Measuring Cup"
+          texture: 2e0a744150536c9ab8756b2f7310497739a7ecad995905cf1f5582683ae5758b
+        - name: "<white>Brown Candle"
+          texture: 52a12eb93439b042954d279fe3f51e49bdaca0f98623cb31740feeb653c0eea
+        - name: "<white>Cobblestone Bucket"
+          texture: 87aa154ad38c775f6eeec4bb7e1709909665ee298d41db9104fb0a60ad1b5745
+
+    natur:
+      display: "<gray>Natur"
+      icon: OAK_SAPLING
+      slot: 16
+      heads:
+        - name: "<white>Rock Mushroom"
+          texture: 9d28c414bf744593aa2c966b7c98134b4e788d7549de76d191f4d87fe71023c0
+        - name: "<white>Log"
+          texture: 1f195ce5c4164871f4c6794673e0f8ff75699f78938b26f95e4870e51d4b99b5
+        - name: "<white>Mushroom"
+          texture: 6fda60f5dad0b00ac868c5cbb9267cddab5b2c33a56169db568d81673a5a023d
+        - name: "<white>Flower"
+          texture: 5e9e16239b30e6b9c53f718f8f2856a54824727ac4a8258f01a1df3963fdf51d
+        - name: "<white>Bush"
+          texture: 40ab5f7b75b66237876811ec94c2722839f70db1dcc67de37d767f2e941bf
+        - name: "<white>Cactus"
+          texture: 48f652b32016eef1b0b06c8d91de6d57436ff2622546919b20af0ec0c86c614
+        - name: "<white>Moss"
+          texture: 44519463de478d67972646c90ace06cdaa6686d89063b3535d495f106cd461a4
+        - name: "<white>Ginger Root"
+          texture: ed806c3d28bc45ae30fc5346beb7592839b5aeb8432c80050c05657daa3939e6
+        - name: "<white>Sculk Vine"
+          texture: aaecad562eba2e5c34f76e6d93ac03daba51b462ddbc42a85d2b9419bc281485
+        - name: "<white>Acorn"
+          texture: 589ac04c7cb0c8d57a86713bcb5af2ba16d118502274c626032544fdffb34c23
+        - name: "<white>Pinecone"
+          texture: b8c22fc97a046afc87a1020c7135bb77e0241e9f053ffa2a92c74e1d9a084ac6
+        - name: "<white>Crystal Fruit"
+          texture: 8e8336169bb894cc136da40b5d6ad22cae3d8052aff067dc09eb8f066122a1d0
+        - name: "<white>Oak Sapling"
+          texture: 97b245f3f150ba621675916a29d00690990ddd8de603293dd2f5f80070a2908
+        - name: "<white>Lily Pad"
+          texture: 40ccf84be049bdc9a988bd274e70d9680381b8a5e8634995bbb876a883b4a4f2
+        - name: "<white>Tulip"
+          texture: dc49c0a846ef3a5018e8084bea8473161c4ef48081d90df79471c4e1124036a2
+        - name: "<white>Rose"
+          texture: 16fb9b3e3f650b7b258c04ffcb85c1b5dcac92b81e52d992c5124b670fe8d6
+        - name: "<white>Sunflower"
+          texture: 96ffc7a33821992e8da650334b1164d713d10e1b31da38fc16ede0ede6d6e694
+        - name: "<white>Clover"
+          texture: 2eaa1d6c76969dd6c3d7f7f3b016727ee687a4cc7592de4925efc18cb8d745e5
+        - name: "<white>Bamboo"
+          texture: 187503026512be2e417cdee3cd78339c4caf09cab52823686572d012e9d19802
+        - name: "<white>Seaweed"
+          texture: ef77346f5894cf0f5eff2a4c06cb9b6eab0bf39d789191b70cf7c08d36fda248
+        - name: "<white>Berry Bush"
+          texture: d85a92e910e8dcfdf81c8facf9203e2d4fd86ba3e5498f32eda4facc0c743d16
+        - name: "<white>Mushroom Cyclops"
+          texture: 5e544a90d8fb08b21c1129eb65c83621f8d65f85c25fc303761609bef54cdc8b
+        - name: "<white>Aspen Log"
+          texture: 845767fa3b19ad23a117158fdfb9d587b0ccb22823bb5d421d16161027e864d4
+        - name: "<white>Autumn Leaves"
+          texture: 6dfed9cf279036d45f537ee628700124d06cbe1f6d728ca5ed7ac611ddea81
+        - name: "<white>Purple Flower"
+          texture: 5fe0588605c62bd5493f4a6dc991033d22f93783554baafb88beb0f709d89594
+        - name: "<white>UwU Pumpkin"
+          texture: 57d84b974c5ed53004f4772992703d6e0965968faf13d4aac5abd5a70637ceb7
+        - name: "<white>Christmas Tree"
+          texture: 5fb1c005da28e5811638e34125b35361d8f4e63841d1253599ca9f61ac40ba67
+        - name: "<white>Corn"
+          texture: 297de27338b9f876e570d1cc01fe1beccfc940467c5c97c467e93e79c81c25ee
+        - name: "<white>Calendula Bush"
+          texture: 87032280b4311832b700b3d94df43226621bcd114d5137302a0faab97963bd73
+        - name: "<white>Snowy Grass"
+          texture: 43c52eae747cad5b4fd19b1a23b39a336b62ed422797a622d045f43e5d38
+        - name: "<white>White Flower"
+          texture: 984cac185922c04a2dfcd54fb8086f19d704ffde5edaf8b7686a8df41719374
+        - name: "<white>Orange Tree"
+          texture: 7a4e13f824c54a978f1c5c80962e4385f6b645e6d1a81e7132e307ac2eced962
+        - name: "<white>Grass Block"
+          texture: a4ea7df5a643f64967693baa2b89ecd955af1f22a4fab61cfb6f4f4e468c8fd2
+        - name: "<white>Honeydew Melon"
+          texture: a8bcba199ece0c58982a99c652fc609e3ea95f52f4ddb58bcc678726827c74bf
+        - name: "<white>Acacia Leaves"
+          texture: 11def916e63e773f70c50342ba06683ada6bc117ef2cef3e4eac42a1173f0f3c
+        - name: "<white>Jellybean Berry"
+          texture: 78a206aee1decc9cd57dc6119fd213b1c64113414b06d3b41f5a5ad2b182f7d9
+        - name: "<white>Birch Bark"
+          texture: 6adc7e3098b9e6630d6d819e114872846b5abca5f627dfba037458ccf30747ea
+        - name: "<white>Carved Pumpkin"
+          texture: 2c534d718b3ac2c4d84e9a0a7dc54558eb02195df848e9c1413431a7db4d2dbb
+        - name: "<white>Spruce Bush"
+          texture: ba4583528b137b16ca85a669010c8641487cd62af4f3842cdcb84e93f1f3c47c
+        - name: "<white>Hellbark Log"
+          texture: a0175d3865d12a8e877760a45904d7bd6d307b19ad906dd6697c90b6aa4f6c44
+        - name: "<white>Alien Flower"
+          texture: 3aff8ea2f696b5edd83da96fbf4f752282a4d84fd529e2291da40f08995fd95c
+        - name: "<white>Chesto Berry"
+          texture: 436f4ff183cbaa49122455614911b84942b5f92d4d82cc3b890bcc7d57c6
+        - name: "<white>Green Moss"
+          texture: fa4b2030c39668b03c6c9dfe0ee62806046659ff62aa8145592d96917588e030
+        - name: "<white>Brain Coral"
+          texture: 957dd43e8f1cd13726c0f99ac404715047d12eb42a28ffc6ae9bfb3b70d7640a
+        - name: "<white>Birch Wood"
+          texture: 85c0202957894b4afc97076ea8458fd4139020d8d24a7b3c6da499badd575340
+
+    tiere:
+      display: "<gray>Tiere"
+      icon: EGG
+      slot: 28
+      heads:
+        - name: "<white>Cat"
+          texture: 367ef9e20f61bc16a70a0cfa77dee5197b859c1766621eb35a25e7c6db50f9
+        - name: "<white>Dog"
+          texture: a60e246bdfd263e545a90913e6f00e9b4156f1a8fa8711b439c124f30f3945c4
+        - name: "<white>Fox"
+          texture: 92a9113b301fd4bd8ea9a244968ead3c5dc9047215885079028b7e98870b50cf
+        - name: "<white>Bear"
+          texture: bb77d11d48e835557ad011f762307eb2b2efbe89c307977fcd7c4c19782c7175
+        - name: "<white>Wolf"
+          texture: 65a7eb696561fe4053a648405418e63b286579e02d38dc881420016bf0c55487
+        - name: "<white>Owl"
+          texture: bfb287f48a2fe5c03aecf730f9a42cbdcb4303d70753817b15f70fe0d34754ac
+        - name: "<white>Frog"
+          texture: 137c0c9d3824537b0652b404f07baadf9a55b6a02b28e26a5a8807e8ecfcc7e3
+        - name: "<white>Duck"
+          texture: 3694ff1d8868f79685d376dc056c38c89bfe9a8ecdba7e6f3ffc5eaf4b262aa1
+        - name: "<white>Rabbit"
+          texture: a2d649f63456cc90dcef8d26bdf7d27fb04981a398c067881dd4ac62c3bdd892
+        - name: "<white>Deer"
+          texture: 7ad765e5757c0e5369c7e336e42d7836eea4b6043b463534cc708b2a761d954f
+        - name: "<white>Horse"
+          texture: 59637b127ac7469f99a4c736bd5dc3d5948e3d9a9880bf0322a9f056db8afc80
+        - name: "<white>Panda"
+          texture: 11564841f44306a9705e50d7a90b15296247b88e809a34e1fb50e1b4d31fe950
+        - name: "<white>Penguin"
+          texture: d60d04d29367df0c1cac1da4041042238856df53329a535a1f08dbe96ef4a485
+        - name: "<white>Turtle"
+          texture: 761cd3e5f7a9bb58a0ed24df94e27513ea61c7a41f33e0180ad9c85f5327f7c5
+        - name: "<white>Snake"
+          texture: bcbd9f24e8d58c827d523418e1ebaa0097a3f991e13f3183afe9496c19bc553d
+        - name: "<white>Bee"
+          texture: e7534376981e44ec05532ddd94479112fc020e83f48a7728eb9e97c10b255337
+        - name: "<white>Butterfly"
+          texture: 38658bb6eee3400235b1e680488cbd9937bcc675ee87d6cc75355ee9667df3b5
+        - name: "<white>Hedgehog"
+          texture: 620188c8cf4ac15e16931aa11e94ecd8b6d9fa076535c17bb226862c15a371b
+        - name: "<white>Koala"
+          texture: 7d2f47d26d3147d904bb1b0bdf66000f098b785b3cf7788b52d99d73829b85d6
+        - name: "<white>Lion"
+          texture: 3c37682ae83d593da0c0806dbceaf48b7dec80ad5e71e1f6d583ba8b8e435e
+        - name: "<white>Monkey"
+          texture: 6c6fedcca7747b1f80fe0a1df88d36d3bdfb5be3d28df4383b6c35185b93db7
+        - name: "<white>Mouse"
+          texture: 1292bccf3e8851334ffa81edd69e830db18c02e820d0b576617f55e1bbd35666
+        - name: "<white>Otter"
+          texture: 78a9b532130d328b03e074d137a1f39b3001bffb3ec00a143d7b3dbfc25f7a55
+        - name: "<white>Parrot"
+          texture: e2439a109494bca415c48b99d634545baee172fb28d936fd402f547383a53eca
+        - name: "<white>Pig"
+          texture: a7f4868625d5621c4aa3a94cb4e99a6b62a968cd730a4f2f147934ecf7e265b
+        - name: "<white>Raccoon"
+          texture: b14e400cbef596706401955ea43313230b192bc2f561df6b44b981f3b29aadc4
+        - name: "<white>Sheep"
+          texture: 84e5cdb0edb362cb454586d1fd0ebe971423f015b0b1bfc95f8d5af8afe7e810
+        - name: "<white>Squirrel"
+          texture: 1ef6ed766368a9e07b3b316a89efcb93718c866fa92b9aaaa4eb68dfe476b1d5
+        - name: "<white>Tiger"
+          texture: 95a7c6611f62256fffad9b4a3d81ea2c609fe5a89d79b482efcc3e09770a916e
+        - name: "<white>Whale"
+          texture: 475b6bd350ea8f6e8c6ea2f65b21d4431846d2df5ab8215b79985e17e4bd8e1
+        - name: "<white>Shark"
+          texture: 34772a14ac8a5ff6845546e1ff5cc0f56b1b76482fcbdb56748e331b1e9cae1d
+        - name: "<white>Crab"
+          texture: afb812ae9f89326ae24f872c81ab2329ba63bdbc9620f0b19da2ac8615469e2
+        - name: "<white>Dolphin"
+          texture: 8e9688b950d880b55b7aa2cfcd76e5a0fa94aac6d16f78e833f7443ea29fed3
+        - name: "<white>Elephant"
+          texture: caa8dd69a6bb90b808a053fa9266eaeb32cc764c2d078776a64786b10f56fb74
+        - name: "<white>Giraffe"
+          texture: fa5ef8694ecca227378d37a08b51d886b947e7d4b3a134256a9c674d79dbdf7
+        - name: "<white>Goat"
+          texture: b5e3ac5dc1cfaf5e207469ae88a89394d702cc87b35bb2c1e7650ae3acddb50a
+        - name: "<white>Hamster"
+          texture: f625c5c7a3ddd939cb1ff677af70789de1429ea3204256b2f9aa706c58f864dc
+        - name: "<white>Snail"
+          texture: 523bfa196f458e870d2c7582dcd1f969128765262d6fb1a35bd4bf4b1a11217b
+        - name: "<white>Assassin Panda"
+          texture: 7da72e0a8c40cb3d7e832236594c5753c6090a72ea8af89d5ef049e481f0b0f2
+        - name: "<white>Ant"
+          texture: d2a2ae749d03ae5ce72bc2a26d2e2a58cd5f2e40c883184bf96c6a2700782d26
+        - name: "<white>Farmer Otter"
+          texture: b6b884a6000d6723ee080f403ec5c02e6f3bff709f3dc0c33c40f40f4f0f5840
+        - name: "<white>Frozen Cow"
+          texture: 52dd02dbb4f3f789c7b438ed6b292b4af9eac1bf60c785d5aef38c3dfc01b81e
+        - name: "<white>White Snail"
+          texture: 79309087f4bac1c7349e8b25f3c3be81b9f3b8391eb12d231810eef884094f51
+        - name: "<white>Brown Axolotl"
+          texture: b4ac4aa37ba2458551ad2a0a9ed44b3f764dd43cd0c5e9f59a8193c295d74af3
+        - name: "<white>Pink Sheep"
+          texture: 2e7cf1c58dbb7c3255b94c6043fa8f0d776c134f4d98b81ca31410965f47a25a
+
+    bloecke:
+      display: "<gray>Bloecke und Bauteile"
+      icon: BRICKS
+      slot: 30
+      heads:
+        - name: "<white>Tin Brick"
+          texture: 2ca86980fafb3925ac2aa0aa5863a97372a861d650c332bd91ed3a15c0669e6
+        - name: "<white>Wood Plank"
+          texture: d881a48a5a9921cebdcadf859fa165d29bc496fc157f61fa54cee83bb9d1356f
+        - name: "<white>Gold Tile"
+          texture: 33816458509af0338565d7fa9585be4f1aa045fbad38e86e4718dd6ff1a87e6e
+        - name: "<white>Concrete (red)"
+          texture: 61856c7b378d350262143843d1f9fbb21911a71983ba7b39a4d4ba5b66bedc6
+        - name: "<white>Marble Block"
+          texture: 785a206697d35709ce271f3853933d8a4b4ef105629d2d74e4ad93ce70b1fc0c
+        - name: "<white>Granite"
+          texture: a0285bea3c8a02db139fa8ec5cc588615a98550725f8e676c93fdbc33b6b
+        - name: "<white>Sandstone"
+          texture: ed0b4c1372c3e3d161a5f629ca75dc2044371882d0d2f92684a34191181ddb7e
+        - name: "<white>Cobblestone"
+          texture: 1567854793cb81b528e6d15c3919b10352261cccb9f48a5ff53d0d61531d67f8
+        - name: "<white>Gravel"
+          texture: 7b08e951d685dd716998a0c7e1396aafb06407c3cd2f6ece01d89529aeb305bf
+        - name: "<white>Slate"
+          texture: 68dee284320ba0f9c3df9c22608e4db40b494f84d02d0bb72b60b37cf84c8af1
+        - name: "<white>Asphalt"
+          texture: 79d321d1eb7ea97cda8cfa1e4d75df96fb6269b3ba87cc69a88bb8c49fed5444
+        - name: "<white>Steel Block"
+          texture: 7320728863a86f8ae1103932861844fd20e72b184de1cb685d375b75481cb153
+        - name: "<white>Copper Ore"
+          texture: 92a01063ed2a2bef137af4a2adfe4aa15facc67a9f51ec7c64ec1036b64c1a31
+        - name: "<white>Tuff Pillar"
+          texture: 2a1fab812275305dceeee3815aa4d448ce6d436aae5c1cd8f935e85860b678e
+        - name: "<white>Copper Grate"
+          texture: 9dbf76a095c16024e9baa48f602eb189c37eb3bd51070e15ab49ab216b07b1b1
+        - name: "<white>Bamboo Mosaic"
+          texture: 1a7a6e7845d667f829299c791757d1106551787dcbd8cba7ebf083e5ca980df5
+        - name: "<white>Terracotta"
+          texture: af201dd75391837766715f1d1f401af1d35700022e6988a601b0eeeb34f4f1fb
+        - name: "<white>Basalt"
+          texture: 28c3fb036bc2729701af7f930a3978051acd2066dda85da5591f449829103d69
+        - name: "<white>Obsidian"
+          texture: 7840b87d52271d2a755dedc82877e0ed3df67dcc42ea479ec146176b02779a5
+        - name: "<white>Quartz Ore"
+          texture: 44f3272a12d0a55153806703d6274c66da1972cf0c9ceaeefdc98df3ec2b4
+        - name: "<white>Ornate Wood Block"
+          texture: ce81b49e544e77026894457d57bfb854668dd6b3aa9d5b173422169f8caeda19
+        - name: "<white>Stone Block"
+          texture: 8c78100b74836cb351f9fc7dadfa88141354038a9be086421efe9d69e7e6231e
+        - name: "<white>Sandstone Block"
+          texture: c4db6d09badaf7a6554ad700f8f88c422561ca9634cf331308348c5f8a463839
+        - name: "<white>Demonite Ore"
+          texture: 76740dacd08d3313bd49021c581e1059fd72e6dc1f73a234d0633c2a4b9f8168
+        - name: "<white>Oak Bark"
+          texture: 8883339d30a6ff83b706bafcf891af156580009cca98e976ffde6fd2434fb3ac
+        - name: "<white>Oxidized Copper"
+          texture: cf16a948350b1af2b9547a6d4eaa57a5f93db4d4060407d74c0ecf7a9d369c9d
+        - name: "<white>Warped Slabs"
+          texture: 2eea494735aaacf088d6af9e0ef7e7971c6e47d2bcb2c9f735b8dc1c83ea6f8c
+        - name: "<white>Observer"
+          texture: acc789f230794f90e33c4f9ad00694bc2a2ff5e8b9b375dc3532401b281f3e58
+        - name: "<white>Kousa Planks"
+          texture: fbd65e235659e53bf463eede267aad81057e121d8e001199ee2b9f555939fd5b
+        - name: "<white>Smooth Basalt"
+          texture: a2ef416866f424cd90f8a890abb2055629e6c31ae7a7846db5b231fd7af04b7
+        - name: "<white>Meteorite Brick"
+          texture: ea75dbe410ed117340e7f2c375fd613603af8a0dae21611efd1097331f841ea2
+        - name: "<white>Beehive"
+          texture: b9dce59ba72f84736e1ea9c3b43eb1aadc497b2904a1cda08972692dc1b4ca75
+        - name: "<white>Enderium Ore"
+          texture: 79c431008d0b747cd8f81873463eb9cf4ac62272472ef1b958fd84d3372fd3bb
+        - name: "<white>Birch Slabs"
+          texture: 37fec2b845d810688d5b1dfe2eda16f3363884ab8294363bff7d1d3f0c29fa05
+        - name: "<white>Iridescent Brick"
+          texture: 268ca96086c906971761d989ac19b105b08f48ec93644cbcfe91354fddc7334a
+        - name: "<white>Bubble Coral"
+          texture: 13f1805edcd32b97ab2f19a03baab1f8d4dc4db8ec7a004b14eb666d09fb87f2
+        - name: "<white>Crimson Nylium"
+          texture: e1029ea47ca0e9440a0782878c84d61d928124c14dabd323c9fc609bad36a457
+        - name: "<white>Lapis"
+          texture: 69c149379bff3714f0a146a4975a923156e1d556328edb892135182ba3aa3c83
+        - name: "<white>Gold Bricks"
+          texture: 65c2936589e11353bc08257528893df8f93b58b632cd98a94b4fbe7ce839d067
+        - name: "<white>Target Block"
+          texture: 73c3a9bdc8c40c42d841daeb71ea9e7d1c54ab31a23a2d926591d55514117e5d
+        - name: "<white>Crimsand Block"
+          texture: be1a3ae3568afa21a37ff9a03621c3f69d0b1c70deead835fff5f5a307928af
+        - name: "<white>Deepslate Bricks"
+          texture: 64c2c3163f1ca6e7f415e583763a6d2198a2f8647bc1f5a7c3b2f9c92b4d23b7
+        - name: "<white>Honey Block"
+          texture: b8c47e839a9ca6f6759c6a6379c33074d3d9f8c6679c17daa62af1219bc5cd9f
+        - name: "<white>Verdant Froglight"
+          texture: 18fbe37d1c141f1f95c5de68e2c702b99beb205e8d1511e9a443280724ee02a7
+        - name: "<white>Empty Block"
+          texture: eab052e5d4e35f5556094ae1f07567c8b204f1b10d2d4e50a3e60f69345d2db7
+
+    deko_plus:
+      display: "<gray>Deko Deluxe"
+      icon: BEACON
+      slot: 32
+      milestone: deko_extra
+      heads:
+        - name: "<white>Statue"
+          texture: 536cc45ee7791e84af09868e6e6b6192d29e9b5b7bc36c7fc728bd853c5db69
+        - name: "<white>Gargoyle"
+          texture: fc62ecc6041ff261c71229d8b8e2a21d67e43d7a7ad034dad23e3dd9622b6dea
+        - name: "<white>Throne Angel"
+          texture: 4f7b65a997407c9bd65c889e543828802b5ec10c1b0f5bfa19c7cab3060f33c6
+        - name: "<white>Trophy"
+          texture: d62379ce9ab2b7376bfa18b01655b2d58f95875740f2d4972ccb7e4781141
+        - name: "<white>Pedestal"
+          texture: 4216af29b19a6ff7525d1853b814270b8f0685810b08870dce14bc8f1ea9743d
+        - name: "<white>Bust"
+          texture: a8c5bbd2e638fe508354b578c785c547e3f9a99e34ea9b33e20b04257e4fe8fe
+        - name: "<white>Totem Pole"
+          texture: e1e1f4d369f43657bd5c8580a5876deb8423b05336c3f64e1300f4f2ce21eced
+        - name: "<white>Relic Shrine"
+          texture: 3de2984bd5645f9d865a9e8c69352ad4e0109a5b38f3a4243e4d6cb92c8333
+        - name: "<white>Altar"
+          texture: b02cae6f0c833c1ecae473c530ac43947da48928e0300c0ab4b89347aa84ef14
+        - name: "<white>Ocean Monument"
+          texture: ebc2f4170b7999e60b9b1280f34df55d9ebfed91135d274a0fed12073ffd3125
+        - name: "<white>Urn"
+          texture: dd4fe1f1d1d92fec3f56b22501d7e358ec2b85565b5b9d367ac2056839bed9a
+        - name: "<white>Chalice"
+          texture: 929859edf6e4a7417f47599f64f46f9a46d8ec40fb9ce1701d603cadd94ab3a6
+        - name: "<white>Crown"
+          texture: 5a4e8f6b9af115e6c689ccb8813672ed413e775715aa5571cac46f25ea14c64a
+        - name: "<white>Hourglass"
+          texture: 6fe7d46322477d61d41c18788f5c1afd24ed526eb3ed84127f212e2515b1883
+        - name: "<white>Treasure Chest"
+          texture: 4b90d5d3be97c5f7075f3145f6d5bd0aaf294c870cc6c36a2429151aae8863e9
+        - name: "<white>Jewel"
+          texture: 59dd683e10c3acfee1decd7e02979ec861d0600924307856b4807c865c9e5a22
+        - name: "<white>Parrot Bust"
+          texture: 43cf317f08c304fc17b0f0f6643341b695287ad925e737843ab501472202ca4c
+        - name: "<white>Rhodonite Jewel"
+          texture: c067fc3e81d64592f7513aeea773e6163433bf4187c4bf72a79038cfc5edc15d
+        - name: "<white>Silver Orb"
+          texture: bd6fe417f1564a8ef2af8bc20002ff01b191954194afcc2a680a9da44b15c767
+        - name: "<white>Sculk Trophy"
+          texture: ae21f95fa180edee7dd8a4e163dbda381545c31e3f4ec08ca6b8a73e1df6566d
+        - name: "<white>Flower Vase"
+          texture: 465d225e3ab682fccabdf7cce7dc4538280150375506f836698f6e0f800b5c38
+        - name: "<white>Magma Orb"
+          texture: 2442a1e08ea77fd144c8ff4cdaef6e0a9aafb83fdcf398d148d8f17444c8fa67
+        - name: "<white>Golden Vase"
+          texture: ea07de4444f295be09ed15188e96cea5628019d944f678a12d88cfe7cd001967
+        - name: "<white>Bonnie Mask"
+          texture: 1e5ffb110ffa7885cc03705a4d1c734d7536063ca0bfaa0577545bba8d05c7b2
+        - name: "<white>Wooden Mask"
+          texture: b07e14316b22119ea36782457d5434379b30fcae6c7e29ffd3be132fbaaf9d28
+        - name: "<white>Clown Mask"
+          texture: 815d8057b46d8335a98da4163f11075812cf3786caf3f21e8dc959b2be09eabf
+        - name: "<white>Technoblade Crown"
+          texture: 67d1c333473f260d3e1e81f21f670774d8d989b156f8a83404c5aa6b4f0feaa1
+        - name: "<white>Tree Vase"
+          texture: 48e91e88a6c76a8e5cab5e46d866a54059c98248bd911b29577d37ea24b0d2cb
+        - name: "<white>Villager Statue"
+          texture: 46f03382c7a2f95174e633958534cfb91609972f765dc8726ea5ad9fe3e066ea
+        - name: "<white>Wolf Mask"
+          texture: 2fc0cb7e4300596c99710c7c8e8b02be6c43053b8f400ca39cd7a756a850a875
+        - name: "<white>Skeptical Mask"
+          texture: 3cfbba286830875b4a3f86bd726c7b5c6cbb2c58b945f73dfc091983d76fd5d1
+        - name: "<white>Emperor's Skull"
+          texture: 2ba171b4ed64d1a401fbc8383a0c4ce56e523ab00855504c00ed27e55ebb70bd
+        - name: "<white>Emerald Chalice"
+          texture: f36b821c1afdd5a5d14e3b3bd0a32263c8df5df5db6e1e88bf65e97b27a8530
+        - name: "<white>Desert Crystal"
+          texture: f35ae57695353e335ddee24ccbb582324dd06896609b34cb72ef416eceecfd0c
+        - name: "<white>Terracotta Vase"
+          texture: 4ce41cef5debb22cc45d87f40855d89c442cebbb9820c47cd4d1f389fde36cf9
+        - name: "<white>Pirate Skull"
+          texture: 16bbfd5bef0239efacbc9aec24c50c303943a348f82bdc5ae92b1e6d601cf3ed
+        - name: "<white>Rose Skull"
+          texture: 4d0de4730f672f1ac6814b0088f99bf2e07a30534e0f2f29db67471343242a57
+        - name: "<white>Notch Statue"
+          texture: b7eb6bbc4c93df31ef34727dc7a86c2b921ed399387b1ae34eb23a306c5c6d1b
+        - name: "<white>Luxury Vase"
+          texture: ee6e451d45dccd5aa5d068e80acf64567d5ad1e77ede912c0f4b05f91e1f675f
+        - name: "<white>Joker Bust"
+          texture: 66eac376607dd140ed9dc6267ab833679d1f088d7f37d01f6f2133006c1f4b97
+        - name: "<white>Super Bell"
+          texture: 1492ac39e8457371d594c40f2e6b5bed9ee585dd27e51969b758d0c806045a1d
+        - name: "<white>Fox Mask"
+          texture: 93de950f26f82e36347761976f02d7edc8b9ad8b93fdc4add3b76fa8fb02277
+        - name: "<white>Demon Mask"
+          texture: 543db39ae5e164159f1793a0604bc979daa4854d0e680d8534afe73395c836d8
+        - name: "<white>Metallic Artifact"
+          texture: 7ec9c9886126a90389038af6df7462f079746b8eaea2e511e10f66e0a59c7d22
+        - name: "<white>Crystal Opal"
+          texture: bf624a44e77b95dbe1cc735536953e840ba6c19b0157c549d9b82534648c8ce4
+
+    schaetze:
+      display: "<gray>Schatzkammer"
+      icon: GOLD_BLOCK
+      slot: 34
+      milestone: schatzkammer
+      heads:
+        - name: "<white>Flawed Onyx"
+          texture: 49dfb601ba809ba70aa26edcc01ad2ea7f3776c6f46123622a1db8c817416ec4
+        - name: "<white>Mithril Ring"
+          texture: cf61365a8e621d44fb50959b072e44518b006ef4c3d3c59911e3ad78973a67a8
+        - name: "<white>Peridot Crystal"
+          texture: e3370cc93e63de739c17276b767d0a402b3941f3a1d0cdaf7c973538aac36382
+        - name: "<white>Ornate Chest"
+          texture: 58428beefd40d36b5ef43065e53fa47d217f784d1efa633567a7565682022909
+        - name: "<white>Electron Orb"
+          texture: 5b8f21edb71169080c0dd42935ee00242c8cc9bb91659ab700489af9b7c58e17
+        - name: "<white>Rainbow Chest"
+          texture: 5226afeffac577e5374d5a55082cf3aaa4a2bff54512934a063b7e033118d92c
+        - name: "<white>Witch's Artifact"
+          texture: 90aa9834b3369533018414a13235d55c49b56451dcbc591b409fcfe2d602ee3b
+        - name: "<white>Sculk Gem"
+          texture: 3a2b3ee18a506377f1c9f2e044ee4dfcd72dc695daee172ec590b2943dd07139
+        - name: "<white>Neutron Orb"
+          texture: 7ab4c4d6ee69bc24bba2b8faf67b9f704a06b01aa93f3efa6aef7a9696c4feef
+        - name: "<white>Gold Rook"
+          texture: ad1bb1e7d09a3f79eadd94d8d67bf9852643913f7ad5cb6174936d8e4cb7734d
+        - name: "<white>Frog Coin"
+          texture: 4f0f58b01a200b6e78346cc07ddb89ec0558259806ab2e491b41acdca40b821
+        - name: "<white>Unlit Lantern"
+          texture: cce4ec2462664be4706b0fa3841e23d58fdb88f111c789885d17c158d4c34ce
+        - name: "<white>Crystal Block"
+          texture: df7467c5f738c641246c09f8ce791e339a86e81de62049b41f492888172fa726
+        - name: "<white>End Crystal"
+          texture: b423289510c54b67df023580979c465d0481c769c865bf4b465cf478749f1c4f
+        - name: "<white>Steam Rune"
+          texture: 3d4b0bfe2b76b3793f0585b9387c8ba48d8d8476a0a1c6058ecaf759f369abbb
+        - name: "<white>Quartz Gem"
+          texture: 1d9d2b5a0641f3a7d7aaabcabf294d6ee0f9d662163f51626ab8235094c23cec
+        - name: "<white>Mist Rune"
+          texture: 88b2eabeea067fd0384fe10f83d486bde8e4c1a01cafebd0987f59de977d1e40
+        - name: "<white>Jungle Orb"
+          texture: 7a40ec1ab744e501256b19434c8c4c9e0ee42580a464faee5ea4fdfd0c3a3703
+        - name: "<white>Netherite Chest"
+          texture: 71a912e332fc0010bebd0f93a14d8e3ea65d1301100cea3fc5ae71990d985807
+        - name: "<white>Spirit Jewel"
+          texture: 98f7829f8350dea740ed263f5fe6ba0cadf42bb6a218ca991e106199e71cc8e5
+        - name: "<white>Gold Shell"
+          texture: d421b446e53e9f375111b43d6d77abaa584a8963639ab7d5488efee6fd406a46
+        - name: "<white>Netherbrick Chest"
+          texture: 6b1bd9be89ba6e476d2016816a16822f7122432c1d499e339806b5cf1df4c88a
+        - name: "<white>Crying Obsidian"
+          texture: 25c4f7f4b32d8f05deffda0e2d7a2dcf27bc810aa1a50b37b3ccd78fd7776afd
+        - name: "<white>Thresh Lantern"
+          texture: ce391863a521a040ec36f4e98d9edad784fb29fa6595deb5cdc1978b87aaac
+        - name: "<white>Pirate Relic"
+          texture: aafcfca393575a44d8a66a4c900f6cd4b23f8ce62cb1ede9ee8f808c84d4cfd8
+        - name: "<white>Anguish Artifact"
+          texture: 215e22698071bc74bdfde25f61d8f69028c0e7b8ed82366c287315e56a233efc
+        - name: "<white>Emerald Block"
+          texture: bc0e6d9e242735481918c5fd14498bd760bb9f4ff6430ad4696b38e8a883da97
+        - name: "<white>Party Chest"
+          texture: 45419640e985d4a440585438f5685d350092ac8cbe992b40ce70b99345f3716c
+        - name: "<white>Emerald Guardian"
+          texture: 319a50fc1feb06f43ccb4c0e5722a48fa7be15b92621118c8e63450c5d8978b5
+        - name: "<white>Purple Orb"
+          texture: 9c425ea9c4a4cbd123a9ffd4a0ba7480e7c515423dd730fb9fb643c18490107f
+        - name: "<white>Ornate Jade"
+          texture: 81dc12312495e8a57dfda231072c44febf25573c65dfcb02d7c8d18995d83e53
+        - name: "<white>Nether Orb"
+          texture: d500292f4afe52d10f299dfb26036322830450331e003084bb220333530664e1
+        - name: "<white>Cosmic Quartz"
+          texture: de150ab7c01846f480897fbd35f0525caeb52aa624f9670095f396105893dacb
+        - name: "<white>Spy Chest"
+          texture: 237a153f27b707c80d16ad7473b74020be3100295a53db37a6f5180be834d7a0
+        - name: "<white>Anguish Ring"
+          texture: 73de3d0e0d7d2345a902305196012874411040ebe2c4e95fb2587dd4d1c09f37
+        - name: "<white>Rune"
+          texture: 552d612ebe6c39996b5a905a77f72d28f6def81fe8b97556e262d272f87e9bb0
+        - name: "<white>Dirt Chest"
+          texture: fc27b387c33e08f9d26dd5c8ce4eba71d96e08d95e71edddc1406472a034
+        - name: "<white>Skull Treasure"
+          texture: 7af7ca376a1424ce08ab59a7e3dc2e86f1c537b90690dacd8f53c24cf532a6f2
+        - name: "<white>Trophy Cube"
+          texture: f889acaf55f74500ea992f30e3c886011a8d8b7023fbf15b9d647b64eded4a2
+        - name: "<white>Diamond Tooth"
+          texture: a2680a28962e9ad2d4872d06fba2cc60824fbb2d0824e42d958575b7563884aa
+        - name: "<white>Sun Relic"
+          texture: 19a92e4cc9a85b4b0a83a3e7e14a19dd3814dae623e00cf9a37e8db4ddc9b757
+        - name: "<white>Rainbow Gem"
+          texture: adc84c1d9289974cc2c5390377d66629eba61d605399bea374f368255f87e3e6
+        - name: "<white>Archery Trophy"
+          texture: ccd19313fe0bf183f26377c633ffb2bac7ca005fe22e9551b25440cf0bf6980c
+        - name: "<white>Golden Ring"
+          texture: c078c68f6f9669370ea39be72945a3a8688e0e024e5d6158fd854fb2b80fb
+        - name: "<white>Pigglet Orb"
+          texture: b90eeb92f198af15afe787447c6461addee3db96f1c3045c389796741c2d1f0e
+
+# ==========================================================================
+# MODUL 6 - GEMEINDEKASSE (Eco-Tax & Infrastructure Fund)
+# ==========================================================================
+gemeindekasse:
+  # Materialien, die eingezahlt werden koennen. Mehr als sieben passen nicht in
+  # die Uebersicht - die Reihenfolge hier ist die Reihenfolge im GUI.
+  accepted:
+    - material: COBBLESTONE
+      display: "<gray>Bruchstein"
+    - material: COAL
+      display: "<dark_gray>Kohle"
+    - material: IRON_INGOT
+      display: "<white>Eisenbarren"
+    - material: COPPER_INGOT
+      display: "<gold>Kupferbarren"
+    - material: GOLD_INGOT
+      display: "<yellow>Goldbarren"
+    - material: EMERALD
+      display: "<green>Smaragd"
+    - material: DIAMOND
+      display: "<aqua>Diamant"
+
+  # Broadcast, wenn ein Spieler eine groessere Menge einzahlt.
+  announce-threshold: 256
+
+  # Meilensteine, aufsteigend nach Schwierigkeit. Sie werden in dieser
+  # Reihenfolge angezeigt (21 pro Seite) und einzeln freigeschaltet, sobald die
+  # Gesamtmenge des jeweiligen Materials erreicht ist.
+  #
+  # 'effect' steuert, was der Meilenstein bewirkt:
+  #   RAIL_SPEED           Modul 3: value = zusaetzlicher Tempo-Anteil (0.20 = +20%)
+  #   FUNDBUERO_DISCOUNT   Modul 1: value = Rabatt (0.25 = -25%), mehrere multiplizieren sich
+  #   FUNDBUERO_PROTECTION Modul 1: value = zusaetzliche Stunden Grabschutz
+  #                        Derzeit bewusst nicht vergeben - der Grabschutz
+  #                        bleibt bei der Grundzeit aus 'fundbuero:'.
+  #   HEADS_CATEGORY       Modul 5: oeffnet Kategorien mit dieser Meilenstein-ID
+  #   HEADS_DISCOUNT       Modul 5: value = Rabatt auf den Kopfpreis
+  #   HOME_EXTRA           Modul 7: value = zusaetzliche Homes fuer jeden
+  #                        ACHTUNG: hier bewusst NICHT vergeben - es soll bei
+  #                        genau einem Home pro Spieler bleiben.
+  #   HOME_DISCOUNT        Modul 7: value = Rabatt auf Setzen und Springen
+  #   SPAWN_DISCOUNT       Modul 8: value = Rabatt auf die Spawn-Reise
+  #   AUFTRAG_SLOTS        Modul 2: value = zusaetzliche offene Auftraege
+  #   SUPPLY_ROLLS         Modul 4: value = zusaetzliche Zuege pro Versorgungskiste
+  #   SPEAR_HUNGER         Modul 15: value = weniger Hunger beim Speer (0.20 = -20%),
+  #                        mehrere multiplizieren sich
+  #   GHAST_SPEED          Modul 15: value = zusaetzliches Happy-Ghast-Tempo (0.10 = +10%)
+  #   NONE                 rein kosmetisch
+  #
+  # Rabatte koennen einen Preis nie auf null druecken - mindestens ein Item
+  # bleibt immer faellig. Ein Preis von 1 laesst sich also nicht rabattieren.
+  milestones:
+
+    - id: jagdhuette
+      display: "<gray>Jagdhuette"
+      icon: STONE_SPEAR
+      material: COBBLESTONE
+      amount: 2500
+      effect: SPEAR_HUNGER
+      value: 0.20
+      broadcast: "<gray>Meilenstein: <white>Jagdhuette</white> - der Speer kostet ab sofort <bold>20% weniger Hunger</bold>."
+
+    - id: erste_gleise
+      display: "<aqua>Erste Gleise"
+      icon: RAIL
+      material: IRON_INGOT
+      amount: 1000
+      effect: RAIL_SPEED
+      value: 0.10
+      broadcast: "<aqua>Meilenstein: <white>Erste Gleise</white> - die Schnellbahn faehrt <bold>10% schneller</bold>."
+
+    - id: kohlelager
+      display: "<dark_gray>Kohlelager"
+      icon: COAL_BLOCK
+      material: COAL
+      amount: 2000
+      effect: SUPPLY_ROLLS
+      value: 1
+      broadcast: "<gold>Meilenstein: <white>Kohlelager</white> - Versorgungskisten enthalten <bold>mehr Loot</bold>."
+
+    - id: kupferzunft
+      display: "<gold>Kupferzunft"
+      icon: COPPER_INGOT
+      material: COPPER_INGOT
+      amount: 1500
+      effect: SPAWN_DISCOUNT
+      value: 0.20
+      broadcast: "<green>Meilenstein: <white>Kupferzunft</white> - die Spawn-Reise kostet <bold>20% weniger</bold>."
+
+    - id: versicherung
+      display: "<green>Versicherungsfonds"
+      icon: CHEST
+      material: EMERALD
+      amount: 400
+      effect: FUNDBUERO_DISCOUNT
+      value: 0.25
+      broadcast: "<green>Meilenstein: <white>Versicherungsfonds</white> - das Fundbuero kostet <bold>25% weniger</bold>."
+
+    - id: strassenbau
+      display: "<gray>Strassenbau"
+      icon: STONE_BRICKS
+      material: COBBLESTONE
+      amount: 10000
+      effect: SPAWN_DISCOUNT
+      value: 0.25
+      broadcast: "<green>Meilenstein: <white>Strassenbau</white> - die Spawn-Reise wird noch guenstiger."
+
+    - id: dorfschmiede
+      display: "<white>Dorfschmiede"
+      icon: ANVIL
+      material: IRON_INGOT
+      amount: 4000
+      effect: RAIL_SPEED
+      value: 0.10
+      broadcast: "<aqua>Meilenstein: <white>Dorfschmiede</white> - die Schnellbahn legt nochmal zu."
+
+    - id: auftragsbuero
+      display: "<yellow>Auftragsbuero"
+      icon: WRITABLE_BOOK
+      material: GOLD_INGOT
+      amount: 750
+      effect: AUFTRAG_SLOTS
+      value: 1
+      broadcast: "<yellow>Meilenstein: <white>Auftragsbuero</white> - jeder darf <bold>einen Auftrag mehr</bold> offen haben."
+
+    - id: himmelsstall
+      display: "<aqua>Himmelsstall"
+      icon: WHITE_HARNESS
+      material: COBBLESTONE
+      amount: 25000
+      effect: GHAST_SPEED
+      value: 0.10
+      broadcast: "<aqua>Meilenstein: <white>Himmelsstall</white> - Happy Ghasts fliegen <bold>10% schneller</bold>."
+
+    - id: deko_extra
+      display: "<light_purple>Stadtbild-Initiative"
+      icon: BEACON
+      material: COBBLESTONE
+      amount: 40000
+      effect: HEADS_CATEGORY
+      value: 1
+      broadcast: "<light_purple>Meilenstein: <white>Stadtbild-Initiative</white> - die Kategorie <bold>Deko Deluxe</bold> ist offen."
+
+    - id: schienenwerk
+      display: "<white>Schienenwerk"
+      icon: RAIL
+      material: DIAMOND
+      amount: 250
+      effect: RAIL_SPEED
+      value: 0.10
+      broadcast: "<white>Meilenstein: <white>Schienenwerk</white> - die Loren fahren wieder ein Stueck schneller."
+
+    - id: kohlekraftwerk
+      display: "<dark_gray>Kohlekraftwerk"
+      icon: FURNACE
+      material: COAL
+      amount: 15000
+      effect: SUPPLY_ROLLS
+      value: 1
+      broadcast: "<gold>Meilenstein: <white>Kohlekraftwerk</white> - die Kisten fallen praller aus."
+
+    - id: kupferleitungen
+      display: "<gold>Kupferleitungen"
+      icon: LIGHTNING_ROD
+      material: COPPER_INGOT
+      amount: 10000
+      effect: HOME_DISCOUNT
+      value: 0.25
+      broadcast: "<green>Meilenstein: <white>Kupferleitungen</white> - Homes kosten <bold>25% weniger</bold>."
+
+    - id: gleisnetz
+      display: "<aqua>Gleisnetz"
+      icon: POWERED_RAIL
+      material: IRON_INGOT
+      amount: 12000
+      effect: RAIL_SPEED
+      value: 0.15
+      broadcast: "<aqua>Meilenstein: <white>Gleisnetz</white> - die Schnellbahn wird deutlich schneller."
+
+    - id: handelsposten
+      display: "<yellow>Handelsposten"
+      icon: EMERALD_BLOCK
+      material: EMERALD
+      amount: 2000
+      effect: AUFTRAG_SLOTS
+      value: 1
+      broadcast: "<yellow>Meilenstein: <white>Handelsposten</white> - noch ein Auftragsplatz fuer alle."
+
+    - id: goldreserve
+      display: "<gold>Goldreserve"
+      icon: GOLD_BLOCK
+      material: GOLD_INGOT
+      amount: 4000
+      effect: SPAWN_DISCOUNT
+      value: 0.25
+      broadcast: "<green>Meilenstein: <white>Goldreserve</white> - die Spawn-Reise wird wieder billiger."
+
+    - id: grosse_versicherung
+      display: "<green>Grosse Versicherung"
+      icon: ENDER_CHEST
+      material: EMERALD
+      amount: 5000
+      effect: FUNDBUERO_DISCOUNT
+      value: 0.25
+      broadcast: "<green>Meilenstein: <white>Grosse Versicherung</white> - das Fundbuero wird nochmal guenstiger."
+
+    - id: lagerhaus
+      display: "<gray>Lagerhaus"
+      icon: BARREL
+      material: COBBLESTONE
+      amount: 100000
+      effect: SUPPLY_ROLLS
+      value: 1
+      broadcast: "<gold>Meilenstein: <white>Lagerhaus</white> - Versorgungskisten liefern mehr."
+
+    - id: bergungsdienst
+      display: "<gold>Bergungsdienst"
+      icon: FILLED_MAP
+      material: DIAMOND
+      amount: 1000
+      effect: FUNDBUERO_DISCOUNT
+      value: 0.25
+      broadcast: "<gold>Meilenstein: <white>Bergungsdienst</white> - Bergungskarte und Rueckkauf werden nochmal guenstiger."
+
+    - id: schatzkammer
+      display: "<gold>Schatzkammer"
+      icon: GOLD_BLOCK
+      material: DIAMOND
+      amount: 2000
+      effect: HEADS_CATEGORY
+      value: 1
+      broadcast: "<light_purple>Meilenstein: <white>Schatzkammer</white> - die Kategorie <bold>Schatzkammer</bold> ist offen."
+
+    - id: hochgeschwindigkeit
+      display: "<aqua>Hochgeschwindigkeit"
+      icon: MINECART
+      material: IRON_INGOT
+      amount: 30000
+      effect: RAIL_SPEED
+      value: 0.15
+      broadcast: "<aqua>Meilenstein: <white>Hochgeschwindigkeit</white> - die Bahn zieht davon."
+
+    - id: waffenkammer
+      display: "<white>Waffenkammer"
+      icon: IRON_SPEAR
+      material: COBBLESTONE
+      amount: 200000
+      effect: SPEAR_HUNGER
+      value: 0.25
+      broadcast: "<green>Meilenstein: <white>Waffenkammer</white> - der Speer kostet nochmal <bold>25% weniger Hunger</bold>."
+
+    - id: kohleflotte
+      display: "<dark_gray>Kohleflotte"
+      icon: MINECART
+      material: COAL
+      amount: 50000
+      effect: SUPPLY_ROLLS
+      value: 1
+      broadcast: "<gold>Meilenstein: <white>Kohleflotte</white> - die Kisten werden noch voller."
+
+    - id: wolkenhafen
+      display: "<gold>Wolkenhafen"
+      icon: LIGHT_BLUE_HARNESS
+      material: COPPER_INGOT
+      amount: 40000
+      effect: GHAST_SPEED
+      value: 0.10
+      broadcast: "<aqua>Meilenstein: <white>Wolkenhafen</white> - Happy Ghasts ziehen nochmal an."
+
+    - id: boersenhaus
+      display: "<yellow>Boersenhaus"
+      icon: LECTERN
+      material: EMERALD
+      amount: 15000
+      effect: AUFTRAG_SLOTS
+      value: 2
+      broadcast: "<yellow>Meilenstein: <white>Boersenhaus</white> - <bold>zwei</bold> zusaetzliche Auftragsplaetze."
+
+    - id: goldkammer
+      display: "<gold>Goldkammer"
+      icon: RAW_GOLD_BLOCK
+      material: GOLD_INGOT
+      amount: 20000
+      effect: SPAWN_DISCOUNT
+      value: 0.30
+      broadcast: "<green>Meilenstein: <white>Goldkammer</white> - die Spawn-Reise ist fast geschenkt."
+
+    - id: handelskammer
+      display: "<yellow>Handelskammer"
+      icon: WRITABLE_BOOK
+      material: DIAMOND
+      amount: 5000
+      effect: AUFTRAG_SLOTS
+      value: 1
+      broadcast: "<yellow>Meilenstein: <white>Handelskammer</white> - jeder darf einen Auftrag mehr offen haben."
+
+    - id: magnetbahn
+      display: "<aqua>Magnetbahn"
+      icon: DETECTOR_RAIL
+      material: IRON_INGOT
+      amount: 75000
+      effect: RAIL_SPEED
+      value: 0.20
+      broadcast: "<aqua>Meilenstein: <white>Magnetbahn</white> - Endausbau der Schnellbahn."
+
+    - id: metropole
+      display: "<gray>Metropole"
+      icon: BELL
+      material: COBBLESTONE
+      amount: 500000
+      effect: HOME_DISCOUNT
+      value: 0.25
+      broadcast: "<green>Meilenstein: <white>Metropole</white> - Homes kosten nochmal weniger."
+
+    - id: wahrzeichen
+      display: "<gradient:#f7971e:#ffd200>Wahrzeichen"
+      icon: DRAGON_EGG
+      material: DIAMOND
+      amount: 10000
+      effect: GHAST_SPEED
+      value: 0.15
+      broadcast: "<gradient:#f7971e:#ffd200>Der Server hat sein <bold>Wahrzeichen</bold> gebaut - Happy Ghasts fliegen jetzt gut ein Drittel schneller. Danke an jeden Spender!"
+
+# ==========================================================================
+# MODUL 7 - HOMES
+# ==========================================================================
+homes:
+  # Wie viele Homes darf ein Spieler setzen? Eins - und dabei soll es bleiben:
+  # kein Meilenstein der Gemeindekasse vergibt den Effekt HOME_EXTRA.
+  max-homes: 1
+  # Zusaetzlich gestaffelte Rechte auswerten: azubicore.homes.<anzahl>
+  # Beispiel: azubicore.homes.10 erlaubt zehn Homes. Der hoechste Treffer
+  # gewinnt, azubicore.homes.unlimited hebt das Limit ganz auf.
+  # Wirkt nur, wenn ein Rechte-Plugin so einen Knoten ausdruecklich vergibt -
+  # von allein bekommt niemand mehr als das eine Home oben.
+  permission-tiers: true
+  # Name, der bei /sethome und /home ohne Argument verwendet wird.
+  default-name: home
+  # Welten, in denen kein Home gesetzt werden darf.
+  disabled-worlds: []
+
+  costs:
+    # Preis fuer /sethome (auch beim Verschieben eines bestehenden Homes).
+    set:
+      material: DIAMOND
+      amount: 5
+    # Preis pro Sprung mit /home. Ein ganzer Diamantblock - der Sprung soll
+    # eine Entscheidung sein und nicht die Standard-Fortbewegung.
+    teleport:
+      material: DIAMOND_BLOCK
+      amount: 1
+    # Ist das allererste Home eines Spielers gratis?
+    first-home-free: false
+    # Beim Loeschen die Setzkosten erstatten?
+    refund-on-delete: false
+
+  # Ein Sprung pro Tag - genau wie /spawn (Modul 8). Der Stand liegt in der
+  # Datenbank und ist damit weder durch Neustart noch durch Aus- und Einloggen
+  # zu umgehen. Wer azubicore.homes.nolimit hat (Standard: OP), ist ausgenommen;
+  # ein Admin hebt eine Sperre mit /homes reset SPIELER auf.
+  daily-limit:
+    enabled: true
+    # ROLLING  = 24 Stunden ab der letzten Nutzung (siehe cooldown-hours)
+    # MIDNIGHT = jeden Kalendertag neu, um Mitternacht Serverzeit
+    reset-mode: ROLLING
+    cooldown-hours: 24
+
+  teleport:
+    # Sekunden Stillstehen vor dem Sprung - zugleich die Dauer der Animation.
+    # 0 = sofort teleportieren.
+    warmup-seconds: 4
+    cancel-on-move: true
+    cancel-on-damage: true
+    # Abklingzeit zwischen zwei Spruengen in Sekunden. Bei aktivem Tageslimit
+    # ueberfluessig, deshalb 0.
+    cooldown-seconds: 0
+    # Ziel auf Lava und Zubauen pruefen und den Sprung notfalls verweigern.
+    require-safe-location: true
+
+  # Dieselbe Aufladeanimation wie beim Spawn-Sprung (Modul 8): Spirale,
+  # Bodenring, steigender Ton, Ankunftswelle am Ziel.
+  animation:
+    enabled: true
+    spiral-particle: END_ROD
+    ring-particle: PORTAL
+    arrival-particle: REVERSE_PORTAL
+    # Nur relevant, wenn oben ein DUST-Partikel eingetragen wird.
+    dust-color: "#5EE7DF"
+
+# ==========================================================================
+# MODUL 8 - SPAWN
+# ==========================================================================
+spawn:
+  # Preis pro Reise. amount: 0 macht den Sprung kostenlos.
+  cost:
+    material: EMERALD
+    amount: 8
+
+  # Wie das Tageslimit zurueckgesetzt wird:
+  #   ROLLING  = 24 Stunden ab der letzten Nutzung (siehe cooldown-hours)
+  #   MIDNIGHT = jeden Kalendertag neu, um Mitternacht Serverzeit
+  reset-mode: ROLLING
+  cooldown-hours: 24
+
+  animation:
+    # Dauer der Aufladephase in Sekunden. 0 = sofort teleportieren.
+    duration-seconds: 4
+    cancel-on-move: true
+    cancel-on-damage: true
+    # Partikel der aufsteigenden Spirale um den Spieler.
+    spiral-particle: END_ROD
+    # Partikel des Bodenrings, der sich zusammenzieht.
+    ring-particle: PORTAL
+    # Partikel der Ankunftswelle am Spawn.
+    arrival-particle: REVERSE_PORTAL
+    # Nur relevant, wenn oben ein DUST-Partikel eingetragen wird.
+    dust-color: "#5EE7DF"
+
+# Der Spawnpunkt selbst wird im Spiel mit /spawn setzen festgelegt und in der
+# Datenbank abgelegt. Ohne gesetzten Punkt wird der Weltspawn der Hauptwelt
+# verwendet. Laeuft Modul 9, gilt der Spawn der Karte, auf der der Spieler
+# gerade ist - /spawn holt niemanden von der alten auf die neue Karte.
+
+# ==========================================================================
+# MODUL 9 - WELTEN (mehrere Karten mit je eigenem Spielstand)
+# ==========================================================================
+# Jede "Gruppe" ist eine Karte und besteht aus ihren Welten - ueblicherweise
+# Oberwelt, Nether und End. Innerhalb einer Gruppe nimmt der Spieler alles mit,
+# ueber die Gruppengrenze hinweg nichts: Inventar, Enderkiste und Erfahrung
+# werden pro Karte getrennt gefuehrt.
+#
+# WICHTIG: Die Welt-Namen muessen exakt den Ordnernamen auf dem Server
+# entsprechen. Beim Start schreibt AzubiCore fuer jede geladene Welt in die
+# Konsole, zu welcher Karte sie gehoert - dort bitte einmal nachsehen.
+# Welten, die in keiner Gruppe auftauchen, landen mit einer Warnung in der
+# Standardgruppe.
+welten:
+  standard-gruppe: neu
+
+  gruppen:
+    alt:
+      name: "Alte Welt"
+      # MiniMessage-Baustein fuer Chat, Tab-Liste und Wechsel-Titel.
+      tag: "<gold>[Alt]</gold>"
+      welten:
+        - alt_world
+        - alt_world_nether
+        - alt_world_the_end
+      # Weltgrenze dieser Karte. aktiv: false laesst die Border unangetastet -
+      # dann gilt weiter, was der Server oder ein anderes Plugin gesetzt hat.
+      # groesse und zentrum gelten fuer die Oberwelt; im Nether rechnet das
+      # Plugin automatisch durch 8, damit die Grenze zum Portal-Netz passt.
+      grenze:
+        aktiv: true
+        groesse: 6000
+        zentrum-x: 0
+        zentrum-z: 0
+        warn-abstand: 32
+        schaden: 0.2
+        schaden-puffer: 5
+
+    neu:
+      name: "Neue Welt"
+      tag: "<aqua>[Neu]</aqua>"
+      welten:
+        - world
+        - world_nether
+        - world_the_end
+      grenze:
+        aktiv: false
+        groesse: 20000
+        zentrum-x: 0
+        zentrum-z: 0
+        warn-abstand: 32
+        schaden: 0.2
+        schaden-puffer: 5
+
+  # Was pro Karte getrennt gefuehrt wird. Alles, was hier auf false steht,
+  # nimmt der Spieler ueber die Kartengrenze hinweg mit.
+  trennen:
+    inventar: true
+    enderkiste: true
+    erfahrung: true
+    leben-und-hunger: true
+    effekte: true
+    spielmodus: false
+
+  # Der Wechsel per /map <karte>. Die Aufwaermzeit verhindert, dass der
+  # Kartenwechsel zum Fluchtknopf aus jedem Kampf wird.
+  wechsel:
+    aufwaermzeit-sekunden: 5
+    abklingzeit-sekunden: 60
+    abbruch-bei-bewegung: true
+    abbruch-bei-schaden: true
+    titel-anzeigen: true
+
+  # Anzeige im Chat. <tag> ist der Baustein der Karte, <name> der Anzeigename
+  # des Spielers und <nachricht> der geschriebene Text.
+  chat:
+    aktiv: true
+    format: "<tag> <name><gray>:</gray> <nachricht>"
+    # true = nur Spieler derselben Karte sehen die Nachricht.
+    getrennt: false
+
+  # Anzeige in der Tab-Liste.
+  tablist:
+    aktiv: true
+    format: "<tag> <name>"
+
+# Der Spawn einer Karte wird im Spiel mit /map setzen <karte> festgelegt und in
+# der Datenbank abgelegt. Ohne gesetzten Punkt gilt der Weltspawn der ersten
+# Welt der Gruppe.
+
+# ==========================================================================
+# MODUL 10 - SPIELSTART
+# ==========================================================================
+# Haelt den Server vor dem Beginn in einem Wartezustand: winzige Weltgrenze,
+# Bauen gesperrt. Ein Admin gibt mit /start frei - dann laeuft ein Countdown
+# und die Border waechst sichtbar auf ihre Zielgroesse.
+#
+# !!! Dieses Modul steht oben absichtlich auf FALSE. Wird es eingeschaltet und
+# !!! der Server neu gestartet, ist der Server SOFORT gesperrt und die Border
+# !!! zieht sich auf start-groesse zusammen - auf allen Welten, die unten
+# !!! erfasst sind. Erst einschalten, wenn der Server wirklich neu beginnt.
+#
+# Der Zustand liegt in der Datenbank: nach dem /start bleibt der Server auch
+# ueber Neustarts hinweg offen.
+start:
+  border:
+    # Groesse waehrend der Wartezeit (Kantenlaenge in Bloecken). Gilt in jeder
+    # Welt gleich - anders als die Zielgroesse wird sie im Nether NICHT
+    # geachtelt, sonst blieben dort nur 12 Bloecke uebrig.
+    start-groesse: 100
+    # Groesse nach dem Start. Im Nether wird durch 8 geteilt, damit die Grenze
+    # zum Portal-Netz passt.
+    ziel-groesse: 6000
+    # Wie lange die Border von start- auf ziel-groesse waechst. Minecraft
+    # animiert das selbst. 0 = sofort springen.
+    wachstum-sekunden: 600
+    # true  = jede Welt wird auf ihrem eigenen Weltspawn zentriert
+    # false = feste Koordinaten unten (Oberwelt-Koordinaten; im Nether teilt
+    #         das Plugin sie wie die Groesse durch 8)
+    zentrum-am-weltspawn: true
+    zentrum-x: 0
+    zentrum-z: 0
+    warn-abstand: 16
+    schaden: 0.2
+
+  # Welche Welten der Start erfasst. ["*"] = alle geladenen Welten.
+  welten: ["*"]
+  # Ausnahmen - hier gehoert die ALTE Karte hinein, wenn dort schon gespielt
+  # wird: sonst wird sie mitgesperrt und beim Start werden die Inventare der
+  # dort eingeloggten Spieler mit geleert.
+  ausgenommene-welten: []
+
+  # Sekunden Countdown vor der Freigabe. 0 = sofort starten.
+  countdown-sekunden: 10
+
+  # Was waehrend der Wartezeit gesperrt ist. Schaden, Hunger und Mobs bleiben
+  # an - es fuehlt sich schon nach Survival an, man kann nur nichts anfangen.
+  # Wer azubicore.start.bypass hat (Standard: OP), darf trotzdem bauen und so
+  # den Spawn vorbereiten.
+  vor-dem-start:
+    bauen-verbieten: true
+    kisten-sperren: true
+    eimer-sperren: true
+
+  # Was der /start ausserdem ausloest.
+  beim-start:
+    zum-spawn-teleportieren: true
+    inventare-leeren: true
+    erfahrung-leeren: true
+    zeit-auf-morgen: true
+    wetter-klar: true
+
+  texte:
+    wartebalken: "<yellow>Der Server ist noch nicht gestartet"
+
+# ==========================================================================
+# MODUL 11 - ZUGANG (Whitelist-Meldung und Wartungsmodus)
+# ==========================================================================
+# Die Whitelist selbst bleibt die von Minecraft - Namen pflegst du weiter mit
+# /whitelist add NAME. Dieses Modul ersetzt nur die nackte Standardmeldung
+# durch einen Text, der erklaert, wie man reinkommt.
+#
+# In allen Meldungen ersetzbar:
+#   <spieler>  Name des Spielers, der abgewiesen wird
+#   <discord>  der Kontakt aus 'discord' weiter unten
+#
+# Mit /zugang vorschau siehst du die Meldungen im Chat, ohne dich aussperren
+# zu muessen.
+zugang:
+  # Taucht ueber <discord> in den Meldungen auf.
+  discord: "marlon.dev"
+
+  whitelist:
+    nachricht:
+      - "<red><bold>Kein Zugang</bold>"
+      - ""
+      - "<gray>Du stehst noch nicht auf der Whitelist."
+      - "<white>Schick deinen Minecraft-Namen per Discord an <aqua><discord></aqua>."
+      - ""
+      - "<gray>Dein Name: <yellow><spieler>"
+
+  wartung:
+    # Startwert beim allerersten Start. Danach gilt, was zuletzt mit
+    # /zugang wartung geschaltet wurde - das ueberlebt Neustarts.
+    aktiv: false
+    nachricht:
+      - "<gold><bold>Wartungsarbeiten</bold>"
+      - ""
+      - "<gray>Der Server wird gerade vorbereitet."
+      - "<white>Schau gleich nochmal rein."
+      - ""
+      - "<dark_gray>Fragen? Discord: <discord>"
+    # Beim Einschalten alle herausschicken, die nicht hereindurften.
+    online-spieler-kicken: true
+    # Anzeige in der Serverliste, solange die Wartung laeuft (max. 2 Zeilen).
+    serverliste:
+      aktiv: true
+      motd:
+        - "<gold><bold>Wartungsarbeiten</bold>"
+        - "<gray>Bitte spaeter nochmal versuchen"
+
+# Wer azubicore.zugang.wartung hat (Standard: OP), kommt waehrend der Wartung
+# herein. OPs kommen zusaetzlich immer durch - sonst koennte ein falsch
+# gesetztes Rechte-Plugin dich aus deinem eigenen Server aussperren.
+
+# ==========================================================================
+# MODUL 12 - HILFE (Wegweiser fuer Spieler)
+# ==========================================================================
+# /hilfe zeigt alle Funktionen des Servers - als GUI, oder mit
+# /hilfe <thema> als Text im Chat zum Nachlesen. Beim ersten Betreten
+# bekommt jeder Spieler ausserdem genau einmal eine kurze Nachricht, die
+# auf /hilfe hinweist.
+#
+# Zwei Dinge halten die Texte von allein aktuell:
+#   * Ein Eintrag mit 'modul:' verschwindet, sobald das Modul oben in
+#     'modules:' abgeschaltet ist. Es steht also nie Hilfe zu etwas da,
+#     was es auf diesem Server gar nicht gibt.
+#   * Die Platzhalter unten holen Preise und Grenzen aus dem laufenden
+#     Modul. Aenderst du weiter oben einen Preis, aendert sich der
+#     Hilfetext mit - von Hand nachpflegen musst du nichts.
+#
+# Platzhalter (nutzbar in 'kopfzeile', 'kurz', 'text' und in der
+# Willkommensnachricht):
+#   <spieler>              Name des Lesers
+#   <fundbuero_karte>      Preis der Bergungskarte        z.B. "3x Diamond"
+#   <fundbuero_rueckkauf>  Preis des Direkt-Rueckkaufs
+#   <fundbuero_schutz>     Schutzdauer eines Grabes       z.B. "24 Stunden"
+#   <auftrag_max>          offene Auftraege pro Spieler
+#   <auftrag_gebuehr>      Gebuehr pro Auftrag            z.B. "1x Diamond"
+#   <bahn_strecke>         Schienenbloecke bis zum Boost
+#   <bahn_tempo>           Beschleunigungsfaktor          z.B. "3.5"
+#   <koepfe_preis>         Preis pro Kopf
+#   <koepfe_kategorien>    Anzahl der Kategorien
+#   <kasse_meilensteine>   Anzahl der Meilensteine
+#   <home_setzen>          Preis fuer /sethome
+#   <home_teleport>        Preis fuer /home
+#   <home_limit>           "einmal am Tag" oder "ohne Tageslimit"
+#   <home_max>             erlaubte Homes des Lesers
+#   <spawn_kosten>         Preis fuer /spawn
+#   <karten>               Namen der Karten     z.B. "Alte Welt, Neue Welt"
+# Ist das zugehoerige Modul abgeschaltet, steht dort ein "-".
+hilfe:
+  gui-titel: "<dark_gray>Serverhilfe"
+
+  # Kopfzeile im GUI - der eine Gedanke, der alles andere erklaert.
+  kopfzeile:
+    - "<gray>Es gibt hier kein /money und keine Shops."
+    - "<gray>Bezahlt wird mit echten <white>Diamanten</white> und <white>Smaragden</white>"
+    - "<gray>aus deinem Inventar."
+    - ""
+    - "<yellow>Klick ein Thema an."
+
+  # Einmalige Nachricht beim ersten Betreten. Wer sie gesehen hat, steht in
+  # der Datenbank - sie kommt also genau einmal, auch bei Spielern, die
+  # schon vor der Installation des Plugins hier waren.
+  #
+  # Selbst nochmal ansehen:      /hilfe willkommen
+  # Bei jemandem zuruecksetzen:  /hilfe reset SPIELER
+  willkommen:
+    aktiv: true
+    # Sekunden nach dem Betreten. Etwas Abstand ist gut - sonst scrollen
+    # Login-Meldungen und Postfach-Hinweise darueber hinweg.
+    verzoegerung: 4
+    # Leer lassen fuer keinen Ton. ENTITY_PLAYER_LEVELUP und
+    # entity.player.levelup sind beide erlaubt.
+    ton: ENTITY_PLAYER_LEVELUP
+    titel: "<gradient:#5ee7df:#b490ca><bold>Willkommen</bold></gradient>"
+    untertitel: "<gray>Tippe <white>/hilfe</white>"
+    # Kurz halten: die Nachricht soll nur den Weg zeigen, nicht erklaeren.
+    zeilen:
+      - ""
+      - "<gray>Hallo <white><spieler></white> - schoen, dass du da bist."
+      - "<gray>Dieser Server hat ein paar eigene Funktionen: Graeber,"
+      - "<gray>Auftraege, eine Gemeindekasse und mehr."
+      - ""
+      - "<white>Was das alles ist, steht in der Serverhilfe:"
+      - "<yellow><click:run_command:'/hilfe'>» hier klicken oder /hilfe eintippen «</click>"
+      - ""
+
+  # Reihenfolge hier = Reihenfolge im GUI. Der Schluessel ist zugleich das
+  # Argument von /hilfe <thema>. Die Namen 'willkommen' und 'reset' sind
+  # durch die Unterbefehle belegt.
+  #
+  # Je Eintrag:
+  #   modul:         optional - Thema nur zeigen, wenn das Modul laeuft
+  #   material:      Symbol im GUI
+  #   titel:         Ueberschrift
+  #   kurz:          ein bis zwei Zeilen fuer die Uebersicht
+  #   text:          der ausfuehrliche Text
+  #   befehl:        optional - Knopf "Oeffnen" im GUI
+  #   berechtigung:  optional - Thema nur mit diesem Recht sichtbar
+  #
+  # Es passen 28 Themen ins GUI. Weitere bleiben ueber /hilfe <thema>
+  # erreichbar, tauchen dort aber nicht mehr auf.
+  eintraege:
+
+    bezahlen:
+      material: EMERALD
+      titel: "<green><bold>Bezahlen</bold>"
+      kurz:
+        - "<gray>Wie Preise auf diesem Server funktionieren."
+      text:
+        - "<gray>Es gibt kein Kontoguthaben. Alles, was etwas kostet, wird"
+        - "<gray>direkt aus deinem Inventar bezahlt - meist mit Diamanten"
+        - "<gray>oder Smaragden."
+        - ""
+        - "<gray>Bezahlt wird nur mit <white>unveraenderten</white> Items. Ein umbenannter"
+        - "<gray>oder verzauberter Diamant zaehlt nicht - so wird dir nie"
+        - "<gray>versehentlich ein Sammlerstueck abgezogen."
+
+    fundbuero:
+      modul: fundbuero
+      material: CHEST
+      titel: "<gold><bold>Fundbuero</bold>"
+      kurz:
+        - "<gray>Deine Sachen ueberleben deinen Tod."
+      text:
+        - "<gray>Stirbst du, fliegen deine Sachen nicht herum: sie landen in"
+        - "<gray>einer Grabkiste an deinem Todesort. Fuer <white><fundbuero_schutz></white> kommst"
+        - "<gray>nur du daran."
+        - ""
+        - "<gray>Mit <white>/fundbuero</white> siehst du deine letzten Graeber. Dort gibt"
+        - "<gray>es zwei kostenpflichtige Abkuerzungen:"
+        - "<dark_gray> - <white>Bergungskarte</white> <gray>(<white><fundbuero_karte></white>) zeigt die Koordinaten"
+        - "<dark_gray> - <white>Rueckkauf</white> <gray>(<white><fundbuero_rueckkauf></white>) holt alles sofort zurueck"
+        - ""
+        - "<gray>Selbst hinlaufen ist und bleibt gratis."
+      befehl: "/fundbuero"
+
+    homes:
+      modul: homes
+      material: RED_BED
+      titel: "<red><bold>Homes</bold>"
+      kurz:
+        - "<gray>Ein fester Rueckweg nach Hause."
+      text:
+        - "<gray>Mit <white>/sethome</white> merkst du dir deinen Wohnort, mit <white>/home</white>"
+        - "<gray>reist du dorthin."
+        - ""
+        - "<dark_gray> - <gray>Erlaubte Homes: <white><home_max>"
+        - "<dark_gray> - <gray>Setzen: <white><home_setzen>"
+        - "<dark_gray> - <gray>Teleport: <white><home_teleport>"
+        - ""
+        - "<gray>Der Sprung ist absichtlich teuer und <white><home_limit></white> moeglich."
+        - "<gray>Er ersetzt keinen Weg, sondern den Heimweg am Abend."
+        - ""
+        - "<gray>Wann du wieder darfst: <white>/homes info"
+      befehl: "/homes"
+
+    spawn:
+      modul: spawn
+      material: COMPASS
+      titel: "<aqua><bold>Spawn</bold>"
+      kurz:
+        - "<gray>Einmal am Tag zurueck zum Startpunkt."
+      text:
+        - "<gray><white>/spawn</white> bringt dich zum Spawnpunkt des Servers - einmal"
+        - "<gray>pro Tag und gegen <white><spawn_kosten></white>."
+        - ""
+        - "<gray>Vorher laeuft eine kurze Aufladung. Bewegst du dich oder"
+        - "<gray>nimmst du Schaden, bricht sie ab - bezahlt wird erst beim"
+        - "<gray>Ankommen, ein Abbruch kostet dich also nichts."
+        - ""
+        - "<gray>Wann du wieder darfst: <white>/spawn info"
+      befehl: "/spawn"
+
+    auftragsboerse:
+      modul: auftragsboerse
+      material: WRITABLE_BOOK
+      titel: "<yellow><bold>Auftragsboerse</bold>"
+      kurz:
+        - "<gray>Arbeit ausschreiben statt selbst graben."
+      text:
+        - "<gray>Du brauchst fuenf Stapel Sand und keine Lust zu graben?"
+        - "<gray>Schreib einen Auftrag aus - jemand anderes liefert."
+        - ""
+        - "<gray>Die Belohnung hinterlegst du beim Erstellen. Sie liegt bis"
+        - "<gray>zur Lieferung treuhaenderisch beim Server: niemand kann mit"
+        - "<gray>etwas werben, das er gar nicht hat."
+        - ""
+        - "<dark_gray> - <white>/auftrag list</white> <gray>offene Auftraege"
+        - "<dark_gray> - <white>/auftrag create</white> <gray>selbst einen ausschreiben"
+        - "<dark_gray> - <white>/auftrag meine</white> <gray>deine eigenen"
+        - "<dark_gray> - <white>/auftrag post</white> <gray>dein Postfach"
+        - ""
+        - "<gray>Grosse Auftraege lieferst du in mehreren Fuhren: gib ab,"
+        - "<gray>was du tragen kannst, der Rest bleibt in der Treuhand liegen."
+        - "<gray>Der Auftrag gehoert dir, bis du fertig bist oder aufgibst"
+        - "<gray>(<white>/auftrag abbrechen ID</white> holt deine Ware zurueck)."
+        - "<gray>Gefuellte Shulkerkisten zaehlen mit ihrem Inhalt."
+        - ""
+        - "<gray>Das Ausschreiben kostet <white><auftrag_gebuehr></white>. Die Gebuehr ist"
+        - "<gray>weg, sobald der Auftrag haengt - auch wenn du ihn abbrichst."
+        - "<gray>Deshalb: lieber einen Auftrag, den jemand erfuellen will,"
+        - "<gray>als drei zum Ausprobieren."
+        - ""
+        - "<gray>Gleichzeitig offen: <white><auftrag_max></white> Auftraege pro Spieler."
+      befehl: "/auftrag list"
+
+    gemeindekasse:
+      modul: gemeindekasse
+      material: GOLD_BLOCK
+      titel: "<gold><bold>Gemeindekasse</bold>"
+      kurz:
+        - "<gray>Das gemeinsame Ziel des Servers."
+      text:
+        - "<gray>Die Gemeindekasse ist der gemeinsame Vorrat aller Spieler."
+        - "<gray>Jeder kann einzahlen - was drin ist, zaehlt fuer alle."
+        - ""
+        - "<gray>Mit jedem erreichten Meilenstein wird etwas fuer den ganzen"
+        - "<gray>Server besser: schnellere Loren, guenstigere Preise, neue"
+        - "<gray>Kopf-Kategorien, laengerer Grabschutz und mehr."
+        - ""
+        - "<gray>Es gibt <white><kasse_meilensteine></white> Stueck, und sie werden nach hinten"
+        - "<gray>deutlich teurer."
+        - ""
+        - "<dark_gray> - <white>/gemeindekasse</white> <gray>Stand und Meilensteine"
+        - "<dark_gray> - <white>/gemeindekasse einzahlen</white> <gray>Items abgeben"
+      befehl: "/gemeindekasse"
+
+    koepfe:
+      modul: koepfe
+      material: PLAYER_HEAD
+      titel: "<light_purple><bold>Koepfe-Katalog</bold>"
+      kurz:
+        - "<gray>Dekorative Koepfe fuer deine Bauten."
+      text:
+        - "<gray>Ueber <white>/heads</white> kaufst du dekorative Koepfe."
+        - "<gray>Preis: <white><koepfe_preis></white> pro Stueck."
+        - ""
+        - "<gray>Es gibt <white><koepfe_kategorien></white> Kategorien. Ein Teil davon ist zu Beginn"
+        - "<gray>gesperrt und wird ueber Meilensteine der Gemeindekasse"
+        - "<gray>freigeschaltet."
+        - ""
+        - "<gray>Gutscheine aus Versorgungskisten loest du ein, indem du sie"
+        - "<gray>in die Hand nimmst und <white>rechtsklickst</white>."
+      befehl: "/heads"
+
+    versorgungskisten:
+      modul: versorgungskisten
+      material: TRAPPED_CHEST
+      titel: "<dark_aqua><bold>Versorgungskisten</bold>"
+      kurz:
+        - "<gray>Beute fuer den, der zuerst da ist."
+      text:
+        - "<gray>In unregelmaessigen Abstaenden faellt irgendwo auf der Karte"
+        - "<gray>eine Versorgungskiste. Der Fundort wird im Chat angesagt."
+        - ""
+        - "<gray>Drin ist meistens Baumaterial, manchmal etwas Wertvolles -"
+        - "<gray>und ganz selten eine Schmiedevorlage."
+        - ""
+        - "<gray>Die Kiste gehoert niemandem. Wer zuerst da ist, nimmt mit."
+
+    schnellbahn:
+      modul: schnellbahn
+      material: MINECART
+      titel: "<white><bold>Schnellbahn</bold>"
+      kurz:
+        - "<gray>Loren werden auf langen Strecken schneller."
+      text:
+        - "<gray>Es gibt hier keine Teleportbefehle quer ueber die Karte."
+        - "<gray>Dafuer lohnt sich der Schienenbau wirklich:"
+        - ""
+        - "<gray>Faehrst du <white><bahn_strecke></white> Bloecke am Stueck auf Schienen, schaltet"
+        - "<gray>deine Lore auf das <white><bahn_tempo>-fache</white> Tempo hoch. In Kurven und"
+        - "<gray>vor Streckenenden bremst sie von selbst wieder ab."
+        - ""
+        - "<gray>Es zaehlen nur besetzte Loren - Gueterloren bleiben normal."
+      befehl: "/schnellbahn info"
+
+    karten:
+      modul: welten
+      material: FILLED_MAP
+      titel: "<blue><bold>Karten</bold>"
+      kurz:
+        - "<gray>Mehrere Welten, getrennte Spielstaende."
+      text:
+        - "<gray>Auf diesem Server gibt es mehr als eine Karte:"
+        - "<white><karten></white>."
+        - ""
+        - "<gray>Jede Karte hat ihren <white>eigenen</white> Spielstand. Inventar,"
+        - "<gray>Enderkiste und Erfahrung werden getrennt gefuehrt: was du"
+        - "<gray>drueben liegen laesst, liegt beim naechsten Besuch noch da."
+        - ""
+        - "<gray>Wechseln mit <white>/map</white>. Der Wechsel ist gefahrlos, du kannst"
+        - "<gray>jederzeit zurueck."
+      befehl: "/map"
+
+    spielstart:
+      modul: start
+      material: BEACON
+      titel: "<red><bold>Spielstart</bold>"
+      kurz:
+        - "<gray>Warum die Welt gerade noch klein ist."
+      text:
+        - "<gray>Der Server ist noch in Vorbereitung. Bis zur Freigabe ist"
+        - "<gray>die Weltgrenze eng gesteckt und Bauen gesperrt."
+        - ""
+        - "<gray>Mit der Freigabe waechst die Grenze auf ihre volle Groesse"
+        - "<gray>und alle starten gemeinsam."
+        - ""
+        - "<gray>Aktueller Stand: <white>/start info"
+      befehl: "/start info"
+
+    end:
+      modul: end
+      material: END_PORTAL_FRAME
+      titel: "<light_purple><bold>Das End</bold>"
+      kurz:
+        - "<gray>Warum das Endportal nicht funktioniert."
+      text:
+        - "<gray>Das End ist auf diesem Server vorerst <white>gesperrt</white>."
+        - "<gray>Portale bleiben zu, und wer es doch hineinschafft,"
+        - "<gray>wird zurueck zum Spawn gebracht."
+        - ""
+        - "<gray>Das ist Absicht: Elytra, Shulker und Drachenkopf sollen"
+        - "<gray>nicht in der ersten Woche schon jedem gehoeren."
+        - ""
+        - "<gray>Aktueller Stand: <white>/endsperre"
+      befehl: "/endsperre"
+
+
+# ==========================================================================
+# MODUL 13 - VERWALTUNG (Hot-Reload und Modul-Schalter)
+# ==========================================================================
+# Aendert Konfiguration und Module im laufenden Betrieb - ohne Serverneustart
+# und ohne das gefaehrliche /reload des Servers.
+#
+#   /verwaltung                    Zustand aller Module
+#   /verwaltung gui                dasselbe zum Anklicken
+#   /verwaltung reload             diese Datei lesen, ALLE Module neu starten
+#   /verwaltung reload [modul]     diese Datei lesen, nur dieses Modul neu starten
+#   /verwaltung an [modul]         einschalten (bleibt auch nach Neustart an)
+#   /verwaltung aus [modul]        abschalten (bleibt auch nach Neustart aus)
+#   /verwaltung neustart [modul]   nur neu starten, Schalter bleibt wie er ist
+#   /verwaltung standard [modul]   Laufzeit-Schalter loeschen, es gilt wieder
+#                                  der Wert aus 'modules:' oben
+#
+# Warum ein Modul-NEUSTART und nicht nur ein Neulesen der Datei: jedes Modul
+# liest seine Werte beim Start einmal in den Speicher (Preise, Materialien,
+# Texte, Weltnamen). Ein blosses Neulesen wuerde deshalb fast nirgends
+# ankommen. Beim Neustart meldet das Plugin Listener, Tasks und Befehle sauber
+# ab und baut sie neu auf - derselbe Weg wie beim Serverstart.
+#
+# Was das im Betrieb bedeutet:
+#   - Offene Fenster (GUIs) werden geschlossen; eingelegte Items kommen zurueck.
+#   - Laufende Vorgaenge des betroffenen Moduls brechen ab: Teleport-Countdowns,
+#     der Countdown von /start, Partikelsaeulen ueber Versorgungskisten.
+#   - Alles, was in der Datenbank steht (Graeber, Auftraege, Homes, Gemeinde-
+#     kasse, Wartungsmodus), bleibt unangetastet und wird neu geladen.
+#
+# 'an'/'aus' landen NICHT in dieser Datei, sondern in der Datenbank (Tabelle
+# settings, Schluessel modules.<id>). Diese Datei bleibt damit exakt so, wie du
+# sie geschrieben hast - mit allen Kommentaren. Ein Schalter aus der Datenbank
+# hat Vorrang vor 'modules:' oben; '/verwaltung standard [modul]' loescht ihn.
+# ==========================================================================
+verwaltung:
+  gui-titel: "<dark_gray>Modulverwaltung"
+
+# ==========================================================================
+# MODUL 14 - ENDSPERRE (kein Rush ins End)
+# ==========================================================================
+# Haelt das End zu, solange es nicht dran ist. Gesperrt wird an jeder Stelle,
+# an der man hineinkommt: das Endportal selbst, jeder andere Teleport in eine
+# End-Welt (/tp, Fremdplugins) und - wenn du willst - schon das Bauen des
+# Portals.
+#
+#   /endsperre           Zustand ansehen
+#   /endsperre an        End sperren
+#   /endsperre aus       End freigeben
+#
+# Der Zustand liegt in der DATENBANK, nicht hier: 'gesperrt' unten ist nur der
+# Startwert beim allerersten Start. Danach gilt, was zuletzt mit /endsperre
+# geschaltet wurde - das ueberlebt Neustarts.
+#
+# Warum nicht 'allow-end: false' in der bukkit.yml: das entfernt die End-Welt
+# komplett. Wer beim Umschalten dort steht, verliert seine Position, und der
+# Fortschritt der Welt (Drache, Endstaedte) ist beim Wiedereinschalten weg.
+# Diese Sperre laesst die Welt bestehen und macht nur die Tuer zu.
+#
+# Wer azubicore.end.bypass hat (Standard: OP), kommt trotz Sperre hinein.
+end:
+  # Startwert beim allerersten Start. Danach entscheidet /endsperre.
+  gesperrt: true
+
+  # Als End gilt automatisch jede Welt mit End-Umgebung - auch mehrere.
+  # Die beiden Listen sind nur fuer Ausnahmen:
+  #   zusaetzliche-welten: nachgebautes End in einer normalen Welt
+  #   ausgenommene-welten: End-Welt, die trotz Sperre offen bleiben soll
+  zusaetzliche-welten: []
+  ausgenommene-welten: []
+
+  # Endportal und jeder andere Teleport ins End. Das hier ist die eigentliche
+  # Sperre - aus heisst: das End ist offen, egal was oben steht.
+  portal-blockieren: true
+
+  # Ender-Augen lassen sich nicht in den Portalrahmen setzen. Damit entsteht
+  # das Portal gar nicht erst, statt dass jemand davorsteht und nicht darf.
+  rahmen-schuetzen: true
+
+  # Ender-Augen lassen sich gar nicht mehr werfen. Standard aus: die Festung
+  # suchen darf man, hinein kommt man trotzdem nicht.
+  augen-werfen-verbieten: false
+
+  # Beim Einschalten der Sperre alle aus dem End herausholen.
+  beim-einschalten-rausholen: true
+  # Wer sich vor der Sperre im End ausgeloggt hat, wird beim Betreten des
+  # Servers herausgeholt. Ziel ist der Spawn aus Modul 8.
+  beim-join-rausholen: true
+
+  texte:
+    portal: "<red>Das End ist auf diesem Server noch gesperrt."
+    rahmen: "<red>Das Endportal bleibt geschlossen, solange das End gesperrt ist."
+    auge: "<red>Ender-Augen bringen dich gerade nirgendwohin - das End ist gesperrt."
+    rausgeholt: "<yellow>Das End ist gesperrt - du wurdest zurueck zum Spawn gebracht."
+
+# ==========================================================================
+# MODUL 15 - WELTBONI (Speer und Happy Ghast)
+# ==========================================================================
+# Zwei Meilenstein-Boni der Gemeindekasse, die an Vanilla-Mechanik haengen und
+# deshalb kein eigenes Feature sind: der Speer kostet weniger Hunger
+# (SPEAR_HUNGER), und Happy Ghasts fliegen schneller (GHAST_SPEED). Wie stark,
+# steht bei den Meilensteinen unter 'gemeindekasse:'. Ohne freigeschalteten
+# Meilenstein tut dieses Modul nichts.
+boni:
+  speer:
+    # Schreibt bei jedem Hungerverbrauch mit Speer eine Zeile ins Log (Grund,
+    # Wert, Hand). Nur zum Nachmessen gedacht - im Betrieb aus lassen.
+    debug: false
+    # Wie lange nach dem Ansetzen des Speers ein Hungerverbrauch noch als
+    # Speer-Verbrauch zaehlt (Ticks). Deckt den Fall ab, dass Vanilla erst beim
+    # Loslassen abrechnet - dann ist die Hand schon wieder unten. Zu gross
+    # gewaehlt, wuerde auch normales Sprinten kurz nach dem Speerstoss guenstiger.
+    nachlauf-ticks: 10
+
+  happy-ghast:
+    # Obergrenze fuer die Summe aller GHAST_SPEED-Meilensteine (1.0 = hoechstens
+    # doppeltes Tempo). Sicherheitsnetz, falls jemand die Werte oben hochdreht:
+    # sehr schnelle Ghasts fliegen der Chunkladung davon.
+    max-bonus: 1.0

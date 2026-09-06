@@ -1,0 +1,49 @@
+# BlockProtect 0.1.0 - every value below can be changed at runtime with
+# /blockprotect config set <path> <value>. Changes are persisted immediately.
+
+storage:
+  database: blockprotect.db
+  busy-timeout-ms: 5000
+  batch-size: 250
+  flush-interval-ticks: 20
+  max-queue-size: 100000
+  retention-days: 0
+
+tracking:
+  enabled: true
+  modules:
+    blocks: true
+    containers: true
+    inventories: true
+    entities: true
+    interactions: true
+    environment: true
+    commands: true
+    chat: false
+    sessions: true
+  options:
+    record-cancelled: false
+    block-state: true
+    item-details: true
+    entity-details: true
+    log-interactions: true
+    log-damage: true
+    log-commands: true
+    log-chat: false
+    log-sessions: true
+    log-environment: true
+    ignored-worlds: []
+    ignored-players: []
+    ignored-blocks: []
+    ignored-entities: []
+
+lookup:
+  default-radius: 10
+  default-limit: 50
+  max-limit: 500
+
+rollback:
+  default-radius: 10
+  default-time: 30m
+  max-records: 5000
+  confirm-seconds: 60

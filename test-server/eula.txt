@@ -1,0 +1,4 @@
+# Minecraft EULA: https://aka.ms/MinecraftEULA
+# Setze den Wert erst nach deiner Zustimmung auf true.
+eula=true
+
