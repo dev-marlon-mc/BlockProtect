@@ -2,11 +2,16 @@ package de.blockprotect.audit;
 
 import org.bukkit.Location;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
 import org.bukkit.entity.Entity;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.EnchantmentStorageMeta;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.Base64;
+import java.util.Map;
+import java.util.TreeMap;
 
 public final class AuditUtil {
     private AuditUtil() {
@@ -23,11 +28,45 @@ public final class AuditUtil {
         return block.getType().getKey() + " " + block.getBlockData().getAsString();
     }
 
+    public static String blockState(BlockState state) {
+        if (state == null) {
+            return null;
+        }
+        return state.getType().getKey() + " " + state.getBlockData().getAsString();
+    }
+
     public static String item(ItemStack item) {
         if (item == null || item.getType().isAir()) {
             return null;
         }
-        return item.getType().getKey() + "x" + item.getAmount();
+        String result = item.getType().getKey() + "x" + item.getAmount();
+        Map<String, Integer> enchantments = enchantments(item);
+        if (!enchantments.isEmpty()) {
+            StringBuilder suffix = new StringBuilder(" [");
+            boolean first = true;
+            for (Map.Entry<String, Integer> entry : enchantments.entrySet()) {
+                if (!first) {
+                    suffix.append(", ");
+                }
+                suffix.append(entry.getKey()).append(' ').append(entry.getValue());
+                first = false;
+            }
+            result += suffix.append(']').toString();
+        }
+        return result;
+    }
+
+    private static Map<String, Integer> enchantments(ItemStack item) {
+        Map<String, Integer> result = new TreeMap<>();
+        item.getEnchantments().forEach((enchantment, level) ->
+                result.merge(enchantment.getKey().toString(), level, Math::max));
+
+        ItemMeta meta = item.getItemMeta();
+        if (meta instanceof EnchantmentStorageMeta stored) {
+            stored.getStoredEnchants().forEach((enchantment, level) ->
+                    result.merge(enchantment.getKey().toString(), level, Math::max));
+        }
+        return result;
     }
 
     public static String itemData(ItemStack item) {

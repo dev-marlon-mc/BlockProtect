@@ -24,8 +24,15 @@ Der Testserver ist absichtlich nur für lokale Tests konfiguriert (`online-mode=
 
 ## Ingame-Steuerung
 
+- `/bp gui` öffnet das einfache Menü für Lookup, Block-Prüfung, Status und Rollback.
 - `/bp inspect` aktiviert die Blockinspektion per Klick.
-- `/bp lookup [radius] [limit] [spieler] [aktion]` sucht Audit-Einträge am Spielerstandort.
+- `/bp lookup` durchsucht die Umgebung mit den Standardwerten.
+- `/bp lookup gui` öffnet dieselbe räumliche Suche direkt als Inventar-GUI.
+- `/bp lookup help` erklärt alle Filter mit Beispielen.
+- `/bp lookup --radius 20 --player Steve --action break --since 2h` nutzt gut lesbare Filter; die Reihenfolge ist egal.
+- `/bp lookup filter` öffnet nach einer Suche die klickbare Filterauswahl; `/bp lookup refresh` lädt die Suche neu.
+- `/bp lookup block --action break` prüft den Block unter dem Fadenkreuz.
+- Die alte Schreibweise `/bp lookup 10 50 Steve break` bleibt kompatibel.
 - `/bp status` zeigt Tracking, Module und Queue.
 - `/bp module set <name> <on|off>` schaltet einzelne Module sofort um.
 - `/bp config get <path>`, `/bp config set <path> <wert>` und `/bp config list` ändern jede Einstellung live und speichern sie sofort.
@@ -34,10 +41,14 @@ Der Testserver ist absichtlich nur für lokale Tests konfiguriert (`online-mode=
 
 ## Erfasste Bereiche
 
-Blöcke (abbauen, platzieren, Explosionen, Feuer, Wachstum, Flüssigkeitsfluss, Pistons und Drops), Container und Inventare (öffnen, Klicks, Drag, Hopperbewegungen, Entnahmen, Crafting, Brauen und Dispense), Entities (Spawn, Tod, Schaden, Pickup/Drop, Fischen, Zähmen, Blockänderung, Hängeschilder, Leinen, Armorstands und Projektile), Interaktionen (Block/entity use, Eimer, Essen, Schilder, Befehle und optional Chat) sowie Join/Quit/Kick werden als Audit-Events gespeichert.
+Die mitgelieferte Konfiguration hat alle Module und Detailoptionen aktiviert – einschließlich Befehlen und Chat.
+
+Blöcke (abbauen, platzieren, Explosionen, Feuer, TNT, Wachstum, Düngen, Feuchtigkeit, Kessel, Schwämme, Flüssigkeitsfluss, Pistons, Kochen und Drops), Container und Inventare (öffnen, Klicks, Drag, Hopperbewegungen, Entnahmen, Crafting, Brauen und Dispense), Entities (Spawn, Schaden, Tod, Entfernen, Transformation, Explosionen, Teleport, Zielwechsel, Pickup/Drop, Fischen, Zähmen, Blockänderung, Hängeschilder, Leinen, Armorstands und Projektile), Interaktionen (Block/entity use, Eimer, Essen, Schilder, Befehle und Chat) sowie Join/Quit/Kick werden als Audit-Events gespeichert.
+
+Bei Entity-Toden speichert BlockProtect nicht nur einen Spieler-Killer. Über Paper `DamageSource` werden Ursache, verursachende Entity und direkte Quelle getrennt aufgezeichnet – zum Beispiel Zombie → Dorfbewohner, Skelett → Pfeil → Spieler oder Creeper/TNT → Entity.
 
 ## Bewusste Grenzen
 
-Die Bukkit/Paper-API liefert nicht für jede interne Weltmutation einen Spieler-Verursacher. Solche Ereignisse werden trotzdem mit `actor=Umgebung` aufgezeichnet. Für maximal vollständige Attribution sollten zusätzliche Gameplay-Plugins ihre eigenen Aktionen über ein kleines späteres API-Modul an BlockProtect melden.
+Die Bukkit/Paper-API liefert nicht für jede interne Weltmutation einen Spieler-Verursacher. Solche Ereignisse werden trotzdem mit Quelle, Ursache und Entity-UUID aufgezeichnet. Hochfrequente interne Ticks wie jede einzelne Redstone-/Physikberechnung werden nicht als Audit-Eintrag gespeichert, weil sie eine Datenbank unbrauchbar schnell überfluten würden. Abgebrochene Events können bei Bedarf mit `tracking.options.record-cancelled: true` ebenfalls protokolliert werden.
 
 Die Kernmodule implementieren `AuditModule`; Erweiterungen können über `BlockProtectPlugin#registerModule(...)` zusätzliche Listener registrieren und über den öffentlichen `AuditRecorder` dieselbe asynchrone Queue verwenden.

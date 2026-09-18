@@ -1,5 +1,7 @@
 # BlockProtect 0.1.0 - every value below can be changed at runtime with
 # /blockprotect config set <path> <value>. Changes are persisted immediately.
+# Standardmäßig wird jede relevante Aktion aufgezeichnet: Spieler, Entities,
+# Weltänderungen, Inventare, Befehle, Chat und Sessions.
 
 storage:
   database: blockprotect.db
@@ -19,9 +21,11 @@ tracking:
     interactions: true
     environment: true
     commands: true
-    chat: false
+    chat: true
     sessions: true
   options:
+    # Abgebrochene Aktionen sind keine Weltänderung und bleiben standardmäßig
+    # aus. Für zusätzliches Security-Auditing kann der Wert auf true gesetzt werden.
     record-cancelled: false
     block-state: true
     item-details: true
@@ -29,7 +33,7 @@ tracking:
     log-interactions: true
     log-damage: true
     log-commands: true
-    log-chat: false
+    log-chat: true
     log-sessions: true
     log-environment: true
     ignored-worlds: []

@@ -3,6 +3,7 @@ package de.blockprotect.audit;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import de.blockprotect.audit.InspectionState;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -42,6 +43,14 @@ public final class InteractionAuditModule implements AuditModule {
         if (!recorder.option("tracking.options.log-interactions", true)) {
             return;
         }
+        // Breaking and placing already have their own, much more useful audit
+        // events. PlayerInteractEvent is also fired for those actions and would
+        // otherwise create confusing duplicate "block used" entries.
+        if (event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK
+                || event.getClickedBlock() == null
+                || isHandledByDedicatedEvent(event.getItem())) {
+            return;
+        }
         Block block = event.getClickedBlock();
         ItemStack item = event.getItem();
         recorder.record(id(), event, AuditRecorder.at(
@@ -51,6 +60,26 @@ public final class InteractionAuditModule implements AuditModule {
                 AuditUtil.item(item), null, null,
                 AuditUtil.details("action", event.getAction(), "face", event.getBlockFace(), "hand", event.getHand())
         ));
+    }
+
+    private static boolean isHandledByDedicatedEvent(ItemStack item) {
+        if (item == null) {
+            return false;
+        }
+        Material material = item.getType();
+        String materialName = material.name();
+        return material.isBlock()
+                || material.isEdible()
+                || materialName.endsWith("_BOAT")
+                || materialName.endsWith("_MINECART")
+                || materialName.endsWith("_SPAWN_EGG")
+                || switch (material) {
+                    case BUCKET, WATER_BUCKET, LAVA_BUCKET, POWDER_SNOW_BUCKET,
+                            FLINT_AND_STEEL, FIRE_CHARGE, BONE_MEAL,
+                            ARMOR_STAND, PAINTING, ITEM_FRAME, GLOW_ITEM_FRAME,
+                            END_CRYSTAL, LEAD, NAME_TAG -> true;
+                    default -> false;
+                };
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
@@ -130,7 +159,7 @@ public final class InteractionAuditModule implements AuditModule {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onChat(AsyncChatEvent event) {
-        if (!recorder.option("tracking.options.log-chat", false)) {
+        if (!recorder.option("tracking.options.log-chat", true)) {
             return;
         }
         String message = PlainTextComponentSerializer.plainText().serialize(event.message());

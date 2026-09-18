@@ -77,7 +77,9 @@ public final class ContainerAuditModule implements AuditModule {
                     representative == null ? null : representative.item(),
                     beforeItem == null ? null : beforeItem.item(),
                     afterItem == null ? null : afterItem.item(),
-                    AuditUtil.details("slot", slot, "before", beforeItem, "after", afterItem)
+                    AuditUtil.details("slot", slot, "before", beforeItem, "after", afterItem,
+                            "before-stack", beforeItem == null ? null : beforeItem.data(),
+                            "after-stack", afterItem == null ? null : afterItem.data())
             ));
         }
     }
@@ -197,12 +199,12 @@ public final class ContainerAuditModule implements AuditModule {
         }
     }
 
-    private record ItemSnapshot(String item, int amount) {
+    private record ItemSnapshot(String item, int amount, String data) {
         private static ItemSnapshot of(ItemStack itemStack) {
             if (itemStack == null || itemStack.getType().isAir()) {
                 return null;
             }
-            return new ItemSnapshot(itemStack.getType().getKey().toString(), itemStack.getAmount());
+            return new ItemSnapshot(AuditUtil.item(itemStack), itemStack.getAmount(), AuditUtil.itemData(itemStack));
         }
     }
 }

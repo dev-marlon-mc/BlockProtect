@@ -23,7 +23,18 @@ import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
 import org.bukkit.event.block.BlockDropItemEvent;
+import org.bukkit.event.block.BlockFertilizeEvent;
+import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.block.BlockCookEvent;
+import org.bukkit.event.block.CauldronLevelChangeEvent;
+import org.bukkit.event.block.CrafterCraftEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.block.EntityBlockFormEvent;
+import org.bukkit.event.block.FluidLevelChangeEvent;
+import org.bukkit.event.block.LeavesDecayEvent;
+import org.bukkit.event.block.MoistureChangeEvent;
+import org.bukkit.event.block.SpongeAbsorbEvent;
+import org.bukkit.event.block.TNTPrimeEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -151,24 +162,175 @@ public final class BlockAuditModule implements AuditModule {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onBlockForm(BlockFormEvent event) {
-        environment(event, "BLOCK_FORM", event.getBlock(), null, AuditUtil.blockState(event.getNewState().getBlock()),
+        if (event instanceof EntityBlockFormEvent entityForm) {
+            if (!recorder.option("tracking.options.log-environment", true)) {
+                return;
+            }
+            recorder.record("environment", event, AuditRecorder.at(
+                    null, null, "environment", "ENTITY_BLOCK_FORM", event.getBlock().getLocation(),
+                    AuditUtil.blockType(event.getBlock()), 0, null, AuditUtil.blockState(event.getBlock()),
+                    AuditUtil.blockState(event.getNewState()), AuditUtil.details(
+                            "entity", AuditUtil.entityType(entityForm.getEntity()),
+                            "new-state", event.getNewState().getType()
+                    )));
+            return;
+        }
+        environment(event, "BLOCK_FORM", event.getBlock(), null, AuditUtil.blockState(event.getNewState()),
                 "new-state", event.getNewState().getType());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onBlockGrow(BlockGrowEvent event) {
-        environment(event, "BLOCK_GROW", event.getBlock(), null, AuditUtil.blockState(event.getNewState().getBlock()),
+        environment(event, "BLOCK_GROW", event.getBlock(), null, AuditUtil.blockState(event.getNewState()),
                 "new-state", event.getNewState().getType());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onBlockSpread(BlockSpreadEvent event) {
-        environment(event, "BLOCK_SPREAD", event.getBlock(), null, AuditUtil.blockState(event.getNewState().getBlock()),
+        environment(event, "BLOCK_SPREAD", event.getBlock(), null, AuditUtil.blockState(event.getNewState()),
                 "source", event.getSource().getLocation());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onBlockIgnite(BlockIgniteEvent event) {
+        if (!recorder.option("tracking.options.log-environment", true)) {
+            return;
+        }
+        Entity source = event.getIgnitingEntity();
+        Player player = event.getPlayer();
+        recorder.record("environment", event, AuditRecorder.at(
+                player == null ? null : player.getUniqueId(), player == null ? null : player.getName(),
+                "environment", "BLOCK_IGNITE", event.getBlock().getLocation(),
+                AuditUtil.blockType(event.getBlock()), 0, null, AuditUtil.blockState(event.getBlock()),
+                "minecraft:fire", AuditUtil.details(
+                        "cause", event.getCause(),
+                        "entity", source == null ? null : AuditUtil.entityType(source),
+                        "block", event.getIgnitingBlock() == null ? null : event.getIgnitingBlock().getLocation()
+                )));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onTntPrime(TNTPrimeEvent event) {
+        if (!recorder.option("tracking.options.log-environment", true)) {
+            return;
+        }
+        Entity source = event.getPrimingEntity();
+        Player player = source instanceof Player possiblePlayer ? possiblePlayer : null;
+        recorder.record("environment", event, AuditRecorder.at(
+                player == null ? null : player.getUniqueId(), player == null ? null : player.getName(),
+                "environment", "TNT_PRIME", event.getBlock().getLocation(),
+                AuditUtil.blockType(event.getBlock()), 1, null, AuditUtil.blockState(event.getBlock()),
+                "minecraft:tnt_entity", AuditUtil.details(
+                        "cause", event.getCause(),
+                        "entity", source == null ? null : AuditUtil.entityType(source),
+                        "block", event.getPrimingBlock() == null ? null : event.getPrimingBlock().getLocation()
+                )));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onFertilize(BlockFertilizeEvent event) {
+        if (!recorder.option("tracking.options.log-environment", true)) {
+            return;
+        }
+        Player player = event.getPlayer();
+        for (BlockState state : event.getBlocks()) {
+            Block block = state.getBlock();
+            recorder.record("environment", event, AuditRecorder.at(
+                    player == null ? null : player.getUniqueId(), player == null ? null : player.getName(),
+                    "environment", "BLOCK_FERTILIZE", block.getLocation(), AuditUtil.blockType(block), 0, null,
+                    AuditUtil.blockState(block), AuditUtil.blockState(state),
+                    AuditUtil.details("source", "fertilizer", "origin", event.getBlock().getLocation())
+            ));
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onLeavesDecay(LeavesDecayEvent event) {
+        environment(event, "LEAVES_DECAY", event.getBlock(), null, null, "cause", "natural");
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onMoistureChange(MoistureChangeEvent event) {
+        environment(event, "MOISTURE_CHANGE", event.getBlock(), null,
+                AuditUtil.blockState(event.getNewState()), "cause", "world");
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onCauldronLevelChange(CauldronLevelChangeEvent event) {
+        if (!recorder.option("tracking.options.log-environment", true)) {
+            return;
+        }
+        Entity source = event.getEntity();
+        Player player = source instanceof Player possiblePlayer ? possiblePlayer : null;
+        recorder.record("environment", event, AuditRecorder.at(
+                player == null ? null : player.getUniqueId(), player == null ? null : player.getName(),
+                "environment", "CAULDRON_CHANGE", event.getBlock().getLocation(),
+                AuditUtil.blockType(event.getBlock()), event.getNewLevel() - event.getOldLevel(), null,
+                AuditUtil.blockState(event.getBlock()), AuditUtil.blockState(event.getNewState()),
+                AuditUtil.details("reason", event.getReason(), "old-level", event.getOldLevel(),
+                        "new-level", event.getNewLevel(), "entity", source == null ? null : AuditUtil.entityType(source))
+        ));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onSpongeAbsorb(SpongeAbsorbEvent event) {
+        if (!recorder.option("tracking.options.log-environment", true)) {
+            return;
+        }
+        for (BlockState state : event.getBlocks()) {
+            Block block = state.getBlock();
+            recorder.record("environment", event, AuditRecorder.at(
+                    null, null, "environment", "SPONGE_ABSORB", block.getLocation(),
+                    AuditUtil.blockType(block), 0, null, AuditUtil.blockState(state), "minecraft:air",
+                    AuditUtil.details("sponge", event.getBlock().getLocation())
+            ));
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onFluidLevelChange(FluidLevelChangeEvent event) {
+        if (!recorder.option("tracking.options.log-environment", true)) {
+            return;
+        }
+        Block block = event.getBlock();
+        recorder.record("environment", event, AuditRecorder.at(
+                null, null, "environment", "FLUID_LEVEL_CHANGE", block.getLocation(),
+                AuditUtil.blockType(block), 0, null, AuditUtil.blockState(block),
+                event.getNewData().getMaterial().getKey().toString(), null
+        ));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onBlockCook(BlockCookEvent event) {
+        if (!recorder.option("tracking.options.log-environment", true)) {
+            return;
+        }
+        recorder.record("environment", event, AuditRecorder.at(
+                null, null, "environment", "BLOCK_COOK", event.getBlock().getLocation(),
+                AuditUtil.blockType(event.getBlock()), event.getResult() == null ? 0 : event.getResult().getAmount(),
+                AuditUtil.item(event.getResult()), AuditUtil.item(event.getSource()), AuditUtil.item(event.getResult()),
+                AuditUtil.details("recipe", event.getRecipe() == null ? null : event.getRecipe().getKey())
+        ));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onCrafterCraft(CrafterCraftEvent event) {
+        if (!recorder.option("tracking.options.log-environment", true)) {
+            return;
+        }
+        recorder.record("environment", event, AuditRecorder.at(
+                null, null, "environment", "CRAFTER_CRAFT", event.getBlock().getLocation(),
+                AuditUtil.blockType(event.getBlock()), event.getResult() == null ? 0 : event.getResult().getAmount(),
+                AuditUtil.item(event.getResult()), null, AuditUtil.item(event.getResult()),
+                AuditUtil.details("recipe", event.getRecipe() == null ? null : event.getRecipe().getKey())
+        ));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onBlockFromTo(BlockFromToEvent event) {
+        if (!recorder.option("tracking.options.log-environment", true)) {
+            return;
+        }
         Block destination = event.getToBlock();
         Block source = event.getBlock();
         recorder.record("environment", event, AuditRecorder.at(
