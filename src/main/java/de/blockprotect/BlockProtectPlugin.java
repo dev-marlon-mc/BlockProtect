@@ -1,26 +1,25 @@
 package de.blockprotect;
 
-import de.blockprotect.audit.AuditModule;
 import de.blockprotect.audit.AuditRecorder;
-import de.blockprotect.audit.BlockAuditModule;
-import de.blockprotect.audit.ContainerAuditModule;
-import de.blockprotect.audit.EntityAuditModule;
-import de.blockprotect.audit.InteractionAuditModule;
 import de.blockprotect.audit.InspectionState;
-import de.blockprotect.audit.SessionAuditModule;
 import de.blockprotect.command.BlockProtectCommand;
 import de.blockprotect.config.ConfigService;
+import de.blockprotect.module.internal.ModuleAdminGui;
+import de.blockprotect.module.internal.ModuleManager;
+import de.blockprotect.module.internal.ModuleUpdateChecker;
 import de.blockprotect.storage.AuditStore;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.sql.SQLException;
-import java.util.List;
 
 public final class BlockProtectPlugin extends JavaPlugin {
     private ConfigService configService;
     private AuditStore auditStore;
     private AuditRecorder recorder;
+    private InspectionState inspectionState;
+    private ModuleManager moduleManager;
+    private ModuleUpdateChecker updateChecker;
 
     @Override
     public void onEnable() {
@@ -37,32 +36,39 @@ public final class BlockProtectPlugin extends JavaPlugin {
         }
 
         recorder = new AuditRecorder(this, configService, auditStore);
-        InspectionState inspectionState = new InspectionState();
-        BlockProtectCommand command = new BlockProtectCommand(this, configService, auditStore, inspectionState);
+        inspectionState = new InspectionState();
+        moduleManager = new ModuleManager(this, configService, recorder, inspectionState);
+        moduleManager.start();
+        ModuleAdminGui moduleGui = new ModuleAdminGui(this, moduleManager);
+        BlockProtectCommand command = new BlockProtectCommand(
+                this, configService, auditStore, inspectionState, moduleManager, moduleGui);
         PluginManager pluginManager = getServer().getPluginManager();
-        List<AuditModule> modules = List.of(
-                new BlockAuditModule(recorder),
-                new ContainerAuditModule(recorder),
-                new EntityAuditModule(recorder),
-                new InteractionAuditModule(recorder, inspectionState),
-                new SessionAuditModule(recorder)
-        );
-        for (AuditModule module : modules) {
-            pluginManager.registerEvents(module, this);
-        }
 
         if (getCommand("blockprotect") != null) {
             getCommand("blockprotect").setExecutor(command);
             getCommand("blockprotect").setTabCompleter(command);
         }
         pluginManager.registerEvents(command, this);
+        pluginManager.registerEvents(moduleGui, this);
 
-        getLogger().info("BlockProtect aktiviert: modulare Audit-Aufzeichnung mit SQLite und Live-Konfiguration.");
-        getLogger().info("Verwende /blockprotect help für Lookup, Inspect und Ingame-Einstellungen.");
+        updateChecker = new ModuleUpdateChecker(this, moduleManager,
+                configService.getInt("updates.check-interval-hours", 24));
+        if (configService.getBoolean("updates.enabled", true)) {
+            updateChecker.start();
+        }
+
+        getLogger().info("BlockProtect-Core aktiviert: Live-Module ohne Bukkit-/Paper-Reload.");
+        getLogger().info("Verwende /blockprotect module gui für die Modulverwaltung.");
     }
 
     @Override
     public void onDisable() {
+        if (updateChecker != null) {
+            updateChecker.close();
+        }
+        if (moduleManager != null) {
+            moduleManager.close();
+        }
         if (auditStore != null) {
             auditStore.close();
         }
@@ -80,15 +86,11 @@ public final class BlockProtectPlugin extends JavaPlugin {
         return recorder;
     }
 
-    /**
-     * Allows another plugin to add an independent audit module without changing
-     * BlockProtect's core listeners. The module can gate itself with the live
-     * ConfigService snapshot and submit records through AuditRecorder.
-     */
-    public void registerModule(AuditModule module) {
-        if (module == null) {
-            throw new IllegalArgumentException("module darf nicht null sein");
-        }
-        getServer().getPluginManager().registerEvents(module, this);
+    public InspectionState inspectionState() {
+        return inspectionState;
+    }
+
+    public ModuleManager moduleManager() {
+        return moduleManager;
     }
 }

@@ -177,6 +177,20 @@ public final class ConfigService {
                 throw new IllegalArgumentException("storage.database muss ein relativer Dateiname innerhalb des Plugin-Ordners sein.");
             }
         }
+        if (path.equals("updates.local-directory") && value instanceof String directory) {
+            java.nio.file.Path candidate = java.nio.file.Path.of(directory);
+            if (directory.isBlank() || candidate.isAbsolute() || candidate.normalize().startsWith("..")) {
+                throw new IllegalArgumentException("updates.local-directory muss ein relativer Ordner innerhalb des Plugin-Ordners sein.");
+            }
+        }
+        if (path.equals("updates.source") && value instanceof String source
+                && !source.equalsIgnoreCase("local") && !source.equalsIgnoreCase("github")) {
+            throw new IllegalArgumentException("updates.source muss local oder github sein.");
+        }
+        if (path.equals("updates.github.repository") && value instanceof String repository
+                && !repository.matches("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")) {
+            throw new IllegalArgumentException("updates.github.repository muss owner/repository sein.");
+        }
         if (value instanceof Number number) {
             int numeric = number.intValue();
             if (path.equals("storage.busy-timeout-ms") && (numeric < 0 || numeric > 120_000)) {
@@ -211,6 +225,9 @@ public final class ConfigService {
             }
             if (path.equals("rollback.confirm-seconds") && (numeric < 10 || numeric > 600)) {
                 throw new IllegalArgumentException("rollback.confirm-seconds muss zwischen 10 und 600 liegen.");
+            }
+            if (path.equals("updates.check-interval-hours") && (numeric < 1 || numeric > 720)) {
+                throw new IllegalArgumentException("updates.check-interval-hours muss zwischen 1 und 720 liegen.");
             }
         }
     }

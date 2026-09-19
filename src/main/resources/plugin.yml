@@ -1,5 +1,5 @@
 name: BlockProtect
-version: 0.1.0
+version: 0.2.0
 main: de.blockprotect.BlockProtectPlugin
 api-version: '26.2'
 description: Modular, live-configurable griefing audit for Paper 26.2.
@@ -36,5 +36,9 @@ permissions:
       blockprotect.config: true
       blockprotect.purge: true
       blockprotect.rollback: true
+      blockprotect.modules: true
+  blockprotect.modules:
+    description: Live-Module aktivieren, deaktivieren und aktualisieren.
+    default: op
 libraries:
   - org.xerial:sqlite-jdbc:3.51.1.0

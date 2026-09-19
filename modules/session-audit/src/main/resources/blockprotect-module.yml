@@ -1,0 +1,9 @@
+id: sessions
+name: BlockProtect Session Audit
+version: ${moduleVersion}
+entrypoint: de.blockprotect.modules.sessions.SessionModule
+api-version: 1
+paper-api-min: '26.2'
+paper-api-max: '26.2'
+minecraft-min: '26.2'
+minecraft-max: '26.2'

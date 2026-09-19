@@ -51,3 +51,18 @@ rollback:
   default-time: 30m
   max-records: 5000
   confirm-seconds: 60
+
+# Der Core bleibt dauerhaft geladen. Nur JARs im Modulordner werden ersetzt.
+modules:
+  auto-enable: true
+  disabled: []
+
+# Für den lokalen Testserver bleibt die Quelle absichtlich local. Für einen
+# produktiven Betrieb kann auf GitHub Releases umgestellt werden.
+updates:
+  enabled: true
+  source: local
+  check-interval-hours: 24
+  local-directory: updates
+  github:
+    repository: dev-marlon-mc/BlockProtect

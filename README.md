@@ -1,6 +1,6 @@
 # BlockProtect
 
-BlockProtect ist ein modularer Griefing-Audit für Paper 26.2. Es speichert Ereignisse asynchron in SQLite und hält die Laufzeitkonfiguration als unveränderlichen Snapshot, sodass Einstellungen während des laufenden Betriebs wirksam werden.
+BlockProtect besteht aus einem dauerhaft geladenen Core und separat geladenen Live-Modulen für Paper 26.2. Der Core speichert Ereignisse asynchron in SQLite; Audit-Listener werden über eigene ClassLoader geladen und können ohne Bukkit-/Paper-Reload ersetzt werden.
 
 ## Build
 
@@ -10,7 +10,15 @@ Voraussetzung: Java 25 und Gradle 9+.
 .\gradlew.bat clean build
 ```
 
-Das fertige Plugin liegt danach in `build/libs/BlockProtect-0.1.0.jar`. Für den vorbereiteten lokalen Server wird es nach `test-server/plugins/BlockProtect.jar` kopiert.
+Das fertige Core-Plugin liegt danach in `build/libs/BlockProtect-0.2.0.jar` und wird nach `test-server/plugins/BlockProtect.jar` kopiert. Die beiden Live-Module werden separat gebaut und als `test-server/plugins/BlockProtect/modules/audit.jar` sowie `sessions.jar` installiert.
+
+Für den lokalen Update-Test wird eine zweite Modulversion mit SHA-256-Sidecar in das Testserver-Updateverzeichnis gelegt:
+
+```powershell
+.\gradlew.bat prepareTestServerModuleUpdate '-PmoduleVersion=1.1.0'
+```
+
+Danach erkennt `/bp module check` die lokalen JARs und `/bp module update audit` oder `/bp module update sessions` führt den kontrollierten Austausch aus. Der Core wird dabei nicht ersetzt.
 
 ## Testserver
 
@@ -34,7 +42,12 @@ Der Testserver ist absichtlich nur für lokale Tests konfiguriert (`online-mode=
 - `/bp lookup block --action break` prüft den Block unter dem Fadenkreuz.
 - Die alte Schreibweise `/bp lookup 10 50 Steve break` bleibt kompatibel.
 - `/bp status` zeigt Tracking, Module und Queue.
-- `/bp module set <name> <on|off>` schaltet einzelne Module sofort um.
+- `/bp module gui` öffnet die Admin-GUI zum Aktivieren, Deaktivieren und Aktualisieren der Live-Module. Linksklick schaltet, Rechtsklick aktualisiert.
+- `/bp module list` zeigt Live-Module und verfügbare Updates.
+- `/bp module check` prüft die konfigurierte Releasequelle sofort.
+- `/bp module update <id>` lädt nur eine neuere, SHA-256-geprüfte Version.
+- `/bp module enable|disable|restart <id>` verwaltet ein Modul ohne `/reload`.
+- `/bp module set <name> <on|off>` schaltet weiterhin einzelne Audit-Unterbereiche sofort um.
 - `/bp config get <path>`, `/bp config set <path> <wert>` und `/bp config list` ändern jede Einstellung live und speichern sie sofort.
 - `/bp flush` leert die Schreibqueue.
 - `/bp purge <tage> confirm` löscht alte Einträge dauerhaft.
@@ -51,4 +64,17 @@ Bei Entity-Toden speichert BlockProtect nicht nur einen Spieler-Killer. Über Pa
 
 Die Bukkit/Paper-API liefert nicht für jede interne Weltmutation einen Spieler-Verursacher. Solche Ereignisse werden trotzdem mit Quelle, Ursache und Entity-UUID aufgezeichnet. Hochfrequente interne Ticks wie jede einzelne Redstone-/Physikberechnung werden nicht als Audit-Eintrag gespeichert, weil sie eine Datenbank unbrauchbar schnell überfluten würden. Abgebrochene Events können bei Bedarf mit `tracking.options.record-cancelled: true` ebenfalls protokolliert werden.
 
-Die Kernmodule implementieren `AuditModule`; Erweiterungen können über `BlockProtectPlugin#registerModule(...)` zusätzliche Listener registrieren und über den öffentlichen `AuditRecorder` dieselbe asynchrone Queue verwenden.
+## Live-Modularchitektur
+
+`BlockProtectPlugin` und die Datenbank bleiben im Core-JAR. Der Core liest `blockprotect-module.yml` aus `plugins/BlockProtect/modules/*.jar`, prüft API-, Paper- und Minecraft-Version, lädt den Entrypoint mit einem child-first `URLClassLoader` und hält nur die API-Pakete parent-first. Aktuell werden zwei unabhängige Module gebaut:
+
+- `audit`: Block-, Container-, Entity- und Interaktions-Audit.
+- `sessions`: Join-, Quit- und Kick-Audit.
+
+Ein Modul implementiert `BlockProtectModule` und erhält einen `ModuleContext`. Listener, Bukkit-Tasks, Modulbefehle, Executor, Threads und `AutoCloseable`-Ressourcen müssen über diesen Kontext registriert werden. Beim Stoppen werden zuerst Tasks und Listener entfernt, danach Befehle und Ressourcen geschlossen, Threads unterbrochen und zuletzt der ClassLoader geschlossen. Dadurch bleibt der Core geladen, während das Modul ausgetauscht wird.
+
+Der Updatepfad ist für den Testserver standardmäßig `local` und verwendet nur Dateien aus `plugins/BlockProtect/updates`. Für Produktion kann `updates.source: github` mit `updates.github.repository: dev-marlon-mc/BlockProtect` verwendet werden. Die GitHub-Implementierung fragt ausschließlich das aktuelle GitHub-Release ab, nicht Branches oder Commits. Jede JAR benötigt eine `.sha256`-Datei; vor dem Stoppen des alten Moduls werden Hash, Descriptor, Entrypoint und Kompatibilität geprüft. Beim Fehler der neuen Aktivierung wird die vorherige JAR aus `module-backups/<id>/` wiederhergestellt und erneut aktiviert.
+
+Ein GitHub-Release verwendet einen numerischen Tag wie `v5.1.0` und enthält die mit Gradle gebauten Assets `BlockProtect-Audit-5.1.0.jar` samt `.jar.sha256` sowie `BlockProtect-Sessions-5.1.0.jar` samt `.jar.sha256`. Kürzere Namen wie `audit-5.1.0.jar` und `sessions-5.1.0.jar` werden ebenfalls erkannt.
+
+Die zentrale Ressourcensammlung kann keine absichtlich außerhalb der API erzeugten Threads, Scheduler-Tasks oder statischen Bukkit-Registrierungen magisch finden. Modulcode muss deshalb die `ModuleContext`-API benutzen. Drittanbieter-Code mit eigenen globalen Registries oder nicht beendbaren Threads kann einen ClassLoader-Leak verursachen und ist für Hot-Updates nicht geeignet. Bukkit-/Paper-Reloads, das Ersetzen des Core-JARs und das dynamische Austauschen bereits geladener API-Klassen bleiben bewusst außerhalb des Designs.

@@ -18,6 +18,9 @@ Nützliche Befehle im Spiel:
 - `/bp lookup filter` – klickbare Filterauswahl nach einer Suche.
 - `/bp lookup block --action break` – den Block unter dem Fadenkreuz prüfen.
 - `/bp status` – Tracking, Module und Queue.
+- `/bp module gui` – Live-Module aktivieren, deaktivieren oder per Rechtsklick aktualisieren.
+- `/bp module check` – lokales Updateverzeichnis prüfen.
+- `/bp module update audit` – Audit-Modul ohne Serverreload aktualisieren.
 - `/bp config list` – alle live änderbaren Einstellungen.
 - `/bp config set tracking.modules.chat true` – Änderung sofort aktiv, ohne Reload.
 - `/bp module set blocks off` – Modul sofort deaktivieren.

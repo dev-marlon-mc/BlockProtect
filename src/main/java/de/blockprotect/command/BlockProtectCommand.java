@@ -3,6 +3,9 @@ package de.blockprotect.command;
 import de.blockprotect.audit.AuditUtil;
 import de.blockprotect.audit.InspectionState;
 import de.blockprotect.config.ConfigService;
+import de.blockprotect.module.ModuleSnapshot;
+import de.blockprotect.module.internal.ModuleAdminGui;
+import de.blockprotect.module.internal.ModuleManager;
 import de.blockprotect.storage.AuditQuery;
 import de.blockprotect.storage.AuditRecord;
 import de.blockprotect.storage.AuditStore;
@@ -81,6 +84,8 @@ public final class BlockProtectCommand implements CommandExecutor, TabCompleter,
     private final ConfigService config;
     private final AuditStore store;
     private final InspectionState inspectionState;
+    private final ModuleManager moduleManager;
+    private final ModuleAdminGui moduleGui;
     private final ConcurrentHashMap<UUID, LookupFilters> inspectFilters = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, AuditView> auditViews = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, AuditQuery> auditQueries = new ConcurrentHashMap<>();
@@ -90,10 +95,18 @@ public final class BlockProtectCommand implements CommandExecutor, TabCompleter,
 
     public BlockProtectCommand(JavaPlugin plugin, ConfigService config, AuditStore store,
                                InspectionState inspectionState) {
+        this(plugin, config, store, inspectionState, null, null);
+    }
+
+    public BlockProtectCommand(JavaPlugin plugin, ConfigService config, AuditStore store,
+                               InspectionState inspectionState, ModuleManager moduleManager,
+                               ModuleAdminGui moduleGui) {
         this.plugin = plugin;
         this.config = config;
         this.store = store;
         this.inspectionState = inspectionState;
+        this.moduleManager = moduleManager;
+        this.moduleGui = moduleGui;
     }
 
     @Override
@@ -103,6 +116,14 @@ public final class BlockProtectCommand implements CommandExecutor, TabCompleter,
             return true;
         }
 
+        if (args[0].equalsIgnoreCase("modulecmd") && args.length >= 2 && moduleManager != null) {
+            if (!has(sender, "blockprotect.modules")) {
+                return true;
+            }
+            return moduleManager.commands().dispatch(args[1], sender,
+                    Arrays.copyOfRange(args, 2, args.length));
+        }
+
         return switch (args[0].toLowerCase(Locale.ROOT)) {
             case "status" -> status(sender);
             case "inspect" -> inspect(sender, args);
@@ -110,7 +131,14 @@ public final class BlockProtectCommand implements CommandExecutor, TabCompleter,
             case "gui", "menu" -> gui(sender);
             case "rollback", "rb" -> rollback(sender, args);
             case "restore", "redo" -> restore(sender, args);
-            case "module" -> module(sender, args);
+            case "module", "modules" -> module(sender, args);
+            case "update" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(ChatColor.YELLOW + "Verwendung: /blockprotect update <modul-id>");
+                    yield true;
+                }
+                yield module(sender, new String[]{"module", "update", args[1]});
+            }
             case "config", "settings" -> config(sender, args);
             case "flush" -> flush(sender);
             case "purge" -> purge(sender, args);
@@ -125,7 +153,7 @@ public final class BlockProtectCommand implements CommandExecutor, TabCompleter,
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             return partial(args[0], "help", "status", "inspect", "lookup", "rollback", "restore",
-                    "gui", "module", "config", "flush", "purge");
+                    "gui", "module", "modules", "update", "config", "flush", "purge");
         }
         if (args[0].equalsIgnoreCase("inspect") && args.length == 2) {
             return partial(args[1], "help", "next", "prev", "page", "filter");
@@ -149,14 +177,21 @@ public final class BlockProtectCommand implements CommandExecutor, TabCompleter,
         if ((args[0].equalsIgnoreCase("restore") || args[0].equalsIgnoreCase("redo")) && args.length == 2) {
             return partial(args[1], "confirm", "cancel");
         }
-        if (args[0].equalsIgnoreCase("module") && args.length == 2) {
-            return partial(args[1], "help", "list", "set");
+        if ((args[0].equalsIgnoreCase("module") || args[0].equalsIgnoreCase("modules")) && args.length == 2) {
+            return partial(args[1], "help", "gui", "list", "set", "enable", "disable", "restart",
+                    "update", "check");
         }
-        if (args[0].equalsIgnoreCase("module") && args.length == 3 && args[1].equalsIgnoreCase("set")) {
+        if ((args[0].equalsIgnoreCase("module") || args[0].equalsIgnoreCase("modules")) && args.length == 3
+                && List.of("enable", "disable", "restart", "update").contains(args[1].toLowerCase(Locale.ROOT))
+                && moduleManager != null) {
+            String[] ids = moduleManager.snapshots().stream().map(ModuleSnapshot::id).toArray(String[]::new);
+            return partial(args[2], ids);
+        }
+        if ((args[0].equalsIgnoreCase("module") || args[0].equalsIgnoreCase("modules")) && args.length == 3 && args[1].equalsIgnoreCase("set")) {
             return partial(args[2], "blocks", "containers", "inventories", "entities", "interactions",
                     "environment", "commands", "chat", "sessions");
         }
-        if (args[0].equalsIgnoreCase("module") && args.length == 4 && args[1].equalsIgnoreCase("set")) {
+        if ((args[0].equalsIgnoreCase("module") || args[0].equalsIgnoreCase("modules")) && args.length == 4 && args[1].equalsIgnoreCase("set")) {
             return partial(args[3], "on", "off");
         }
         if (args[0].equalsIgnoreCase("config") || args[0].equalsIgnoreCase("settings")) {
@@ -2936,15 +2971,88 @@ public final class BlockProtectCommand implements CommandExecutor, TabCompleter,
     }
 
     private boolean module(CommandSender sender, String[] args) {
-        if (!has(sender, "blockprotect.config")) {
-            return true;
-        }
         if (args.length > 1 && (args[1].equalsIgnoreCase("help") || args[1].equalsIgnoreCase("?"))) {
             moduleHelp(sender);
             return true;
         }
+        if (args.length > 1 && args[1].equalsIgnoreCase("gui")) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage(ChatColor.RED + "Die Modul-GUI ist nur ingame verfügbar.");
+                return true;
+            }
+            if (!has(sender, "blockprotect.modules")) {
+                return true;
+            }
+            if (moduleGui == null) {
+                sender.sendMessage(ChatColor.RED + "Die Live-Modulverwaltung ist nicht verfügbar.");
+                return true;
+            }
+            moduleGui.open(player);
+            return true;
+        }
+        if (args.length > 1 && (args[1].equalsIgnoreCase("enable")
+                || args[1].equalsIgnoreCase("disable") || args[1].equalsIgnoreCase("restart"))) {
+            if (!has(sender, "blockprotect.modules")) {
+                return true;
+            }
+            if (moduleManager == null || args.length < 3) {
+                sender.sendMessage(ChatColor.YELLOW + "Verwendung: /blockprotect module <enable|disable|restart> <id>");
+                return true;
+            }
+            String id = args[2];
+            boolean success = switch (args[1].toLowerCase(Locale.ROOT)) {
+                case "enable" -> moduleManager.enable(id);
+                case "disable" -> moduleManager.disable(id);
+                default -> moduleManager.restart(id);
+            };
+            sender.sendMessage((success ? ChatColor.GREEN : ChatColor.RED)
+                    + (success ? "Modulaktion ausgeführt: " : "Modulaktion fehlgeschlagen: ") + id);
+            return true;
+        }
+        if (args.length > 1 && args[1].equalsIgnoreCase("check")) {
+            if (!has(sender, "blockprotect.modules")) {
+                return true;
+            }
+            if (moduleManager == null) {
+                return true;
+            }
+            sender.sendMessage(ChatColor.GRAY + "Releaseprüfung wurde gestartet …");
+            moduleManager.checkForUpdatesAsync(notices -> {
+                if (notices.isEmpty()) {
+                    sender.sendMessage(ChatColor.YELLOW + "Keine neuen, geprüften Releases gefunden.");
+                } else {
+                    notices.forEach(notice -> sender.sendMessage(ChatColor.GREEN + notice.moduleId()
+                            + " -> v" + notice.version() + " (" + notice.source() + ")"));
+                }
+            });
+            return true;
+        }
+        if (args.length > 1 && args[1].equalsIgnoreCase("update")) {
+            if (!has(sender, "blockprotect.modules")) {
+                return true;
+            }
+            if (moduleManager == null || args.length < 3) {
+                sender.sendMessage(ChatColor.YELLOW + "Verwendung: /blockprotect module update <id>");
+                return true;
+            }
+            String id = args[2];
+            sender.sendMessage(ChatColor.GRAY + "Update für " + id + " wird geprüft …");
+            moduleManager.updateAsync(id, result -> sender.sendMessage(
+                    (result.success() ? ChatColor.GREEN : ChatColor.RED) + result.message()));
+            return true;
+        }
+        if (!has(sender, "blockprotect.config")) {
+            return true;
+        }
         if (args.length == 1 || args[1].equalsIgnoreCase("list")) {
             sender.sendMessage(ChatColor.GOLD + "Module: " + moduleSummary());
+            if (moduleManager != null) {
+                for (ModuleSnapshot module : moduleManager.snapshots()) {
+                    sender.sendMessage(ChatColor.GRAY + "- " + module.id() + " v" + module.version()
+                            + " · " + module.status() + (module.availableUpdate() == null
+                            ? "" : " · Update: v" + module.availableUpdate()));
+                }
+            }
             return true;
         }
         if (args.length < 4 || !args[1].equalsIgnoreCase("set")) {
@@ -2972,13 +3080,21 @@ public final class BlockProtectCommand implements CommandExecutor, TabCompleter,
     }
 
     private static void moduleHelp(CommandSender sender) {
-        sender.sendMessage(Component.text("╭─ Module · Aufzeichnungsbereiche", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("╭─ Module · Live-Verwaltung", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("│ /bp module gui", NamedTextColor.AQUA)
+                .append(Component.text("  – Admin-GUI für Aktivierung und Updates", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("│ /bp module list", NamedTextColor.AQUA)
-                .append(Component.text("  – aktuellen Status anzeigen", NamedTextColor.GRAY)));
+                .append(Component.text("  – Core- und Tracking-Status anzeigen", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("│ /bp module update <id>", NamedTextColor.AQUA)
+                .append(Component.text("  – geprüfte Release-Version laden", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("│ /bp module enable|disable|restart <id>", NamedTextColor.AQUA)
+                .append(Component.text("  – Modul ohne Serverreload verwalten", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("│ /bp module check", NamedTextColor.AQUA)
+                .append(Component.text("  – Updatequelle sofort prüfen", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("│ /bp module set <name> on|off", NamedTextColor.AQUA)
-                .append(Component.text("  – Modul sofort umschalten", NamedTextColor.GRAY)));
+                .append(Component.text("  – bestehende Audit-Unterbereiche umschalten", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("│ Beispiele: /bp module set entities on", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("╰─ Namen: blocks, containers, inventories, entities, interactions,", NamedTextColor.DARK_GRAY));
+        sender.sendMessage(Component.text("╰─ Tracking-Namen: blocks, containers, inventories, entities, interactions,", NamedTextColor.DARK_GRAY));
         sender.sendMessage(Component.text("   environment, commands, chat, sessions", NamedTextColor.DARK_GRAY));
     }
 
