@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "de.blockprotect"
-version = "0.2.0"
+version = providers.gradleProperty("blockprotectVersion").orElse("26.2").get()
 
 repositories {
     mavenCentral()
@@ -34,6 +34,13 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.processResources {
+    inputs.property("pluginVersion", project.version)
+    filesMatching("plugin.yml") {
+        expand("pluginVersion" to project.version)
+    }
 }
 
 tasks.jar {

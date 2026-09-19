@@ -1,9 +1,9 @@
 id: audit
 name: BlockProtect Audit Suite
-version: ${moduleVersion}
+version: '${moduleVersion}'
 entrypoint: de.blockprotect.modules.audit.AuditSuiteModule
 api-version: 1
 paper-api-min: '26.2'
-paper-api-max: '26.2'
+paper-api-max: '26.3'
 minecraft-min: '26.2'
-minecraft-max: '26.2'
+minecraft-max: '26.3'

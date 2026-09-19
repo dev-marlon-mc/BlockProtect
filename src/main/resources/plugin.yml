@@ -1,5 +1,5 @@
 name: BlockProtect
-version: 0.2.0
+version: '${pluginVersion}'
 main: de.blockprotect.BlockProtectPlugin
 api-version: '26.2'
 description: Modular, live-configurable griefing audit for Paper 26.2.

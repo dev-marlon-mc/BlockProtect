@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "de.blockprotect.modules"
-val moduleVersion = providers.gradleProperty("moduleVersion").orElse("1.0.0")
+val moduleVersion = providers.gradleProperty("moduleVersion").orElse(rootProject.version.toString())
 version = moduleVersion.get()
 
 repositories {

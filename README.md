@@ -1,6 +1,6 @@
 # BlockProtect
 
-BlockProtect besteht aus einem dauerhaft geladenen Core und separat geladenen Live-Modulen für Paper 26.2. Der Core speichert Ereignisse asynchron in SQLite; Audit-Listener werden über eigene ClassLoader geladen und können ohne Bukkit-/Paper-Reload ersetzt werden.
+BlockProtect besteht aus einem dauerhaft geladenen Core und separat geladenen Live-Modulen für Paper/Minecraft 26.2 und 26.3. Es kompiliert gegen die gemeinsame Paper-26.2-API und begrenzt den Modul-Descriptor auf diese geprüfte Versionsspanne; Audit-Listener werden über eigene ClassLoader geladen und können ohne Bukkit-/Paper-Reload ersetzt werden.
 
 ## Build
 
@@ -10,12 +10,12 @@ Voraussetzung: Java 25 und Gradle 9+.
 .\gradlew.bat clean build
 ```
 
-Das fertige Core-Plugin liegt danach in `build/libs/BlockProtect-0.2.0.jar` und wird nach `test-server/plugins/BlockProtect.jar` kopiert. Die beiden Live-Module werden separat gebaut und als `test-server/plugins/BlockProtect/modules/audit.jar` sowie `sessions.jar` installiert.
+Das fertige Core-Plugin liegt danach in `build/libs/BlockProtect-26.2.jar` und wird nach `test-server/plugins/BlockProtect.jar` kopiert. Die beiden Live-Module werden separat gebaut und als `test-server/plugins/BlockProtect/modules/audit.jar` sowie `sessions.jar` installiert. Die Modulversion folgt standardmäßig derselben Projektversion; ein abweichender Wert kann für lokale Update-Tests über `-PmoduleVersion=...` gesetzt werden.
 
 Für den lokalen Update-Test wird eine zweite Modulversion mit SHA-256-Sidecar in das Testserver-Updateverzeichnis gelegt:
 
 ```powershell
-.\gradlew.bat prepareTestServerModuleUpdate '-PmoduleVersion=1.1.0'
+.\gradlew.bat prepareTestServerModuleUpdate '-PmoduleVersion=26.2.1'
 ```
 
 Danach erkennt `/bp module check` die lokalen JARs und `/bp module update audit` oder `/bp module update sessions` führt den kontrollierten Austausch aus. Der Core wird dabei nicht ersetzt.
@@ -29,6 +29,8 @@ Danach erkennt `/bp module check` die lokalen JARs und `/bp module update audit`
 ```
 
 Der Testserver ist absichtlich nur für lokale Tests konfiguriert (`online-mode=false`, `spawn-protection=0`). Er darf nicht öffentlich erreichbar gemacht werden.
+
+Paper 26.3 wird aktuell noch als Alpha-Build getestet. Die 26.3-Freigabe sollte nach Veröffentlichung eines stabilen Paper-Builds erneut auf diesem Build verifiziert werden.
 
 ## Ingame-Steuerung
 
@@ -77,6 +79,6 @@ Der Updatepfad ist für den Testserver standardmäßig `local` und verwendet nur
 
 Für ein privates GitHub-Repository muss jeder Server ein Fine-Grained-Token mit Read-only-Zugriff auf Repository-Inhalte als Umgebungsvariable `BLOCKPROTECT_GITHUB_TOKEN` erhalten. Das Token wird nicht in der Plugin-Konfiguration gespeichert oder protokolliert. Bei öffentlichen Repositories ist kein Token erforderlich.
 
-Ein GitHub-Release verwendet einen numerischen Tag wie `v5.1.0` und enthält die mit Gradle gebauten Assets `BlockProtect-Audit-5.1.0.jar` samt `.jar.sha256` sowie `BlockProtect-Sessions-5.1.0.jar` samt `.jar.sha256`. Kürzere Namen wie `audit-5.1.0.jar` und `sessions-5.1.0.jar` werden ebenfalls erkannt.
+Ein GitHub-Release verwendet einen numerischen Tag wie `v26.2` und enthält die mit Gradle gebauten Assets `BlockProtect-Audit-26.2.jar` samt `.jar.sha256` sowie `BlockProtect-Sessions-26.2.jar` samt `.jar.sha256`. Kürzere Namen wie `audit-26.2.jar` und `sessions-26.2.jar` werden ebenfalls erkannt. Release-Tag, Core-Version und Modulversionen folgen standardmäßig derselben Version; der Paper-/Minecraft-Kompatibilitätsbereich bleibt separat im jeweiligen Descriptor festgelegt.
 
 Die zentrale Ressourcensammlung kann keine absichtlich außerhalb der API erzeugten Threads, Scheduler-Tasks oder statischen Bukkit-Registrierungen magisch finden. Modulcode muss deshalb die `ModuleContext`-API benutzen. Drittanbieter-Code mit eigenen globalen Registries oder nicht beendbaren Threads kann einen ClassLoader-Leak verursachen und ist für Hot-Updates nicht geeignet. Bukkit-/Paper-Reloads, das Ersetzen des Core-JARs und das dynamische Austauschen bereits geladener API-Klassen bleiben bewusst außerhalb des Designs.

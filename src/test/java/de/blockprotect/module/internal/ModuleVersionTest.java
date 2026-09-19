@@ -10,6 +10,7 @@ class ModuleVersionTest {
     void comparesNumericReleaseVersions() {
         assertEquals(0, ModuleVersion.parse("v1.0").compareTo(ModuleVersion.parse("1.0.0")));
         assertEquals(1, ModuleVersion.parse("1.10.0").compareTo(ModuleVersion.parse("1.9.9")));
+        assertEquals(1, ModuleVersion.parse("26.2.1").compareTo(ModuleVersion.parse("26.2")));
     }
 
     @Test

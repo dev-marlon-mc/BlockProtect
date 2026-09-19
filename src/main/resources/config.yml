@@ -1,4 +1,4 @@
-# BlockProtect 0.1.0 - every value below can be changed at runtime with
+# BlockProtect 26.2 - every value below can be changed at runtime with
 # /blockprotect config set <path> <value>. Changes are persisted immediately.
 # Standardmäßig wird jede relevante Aktion aufgezeichnet: Spieler, Entities,
 # Weltänderungen, Inventare, Befehle, Chat und Sessions.
