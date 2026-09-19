@@ -8,7 +8,9 @@ public record UpdateDescriptor(String moduleId,
                                String source,
                                Path localPath,
                                URI jarUri,
-                               URI checksumUri) {
+                               URI checksumUri,
+                               String jarFileName,
+                               String checksumFileName) {
     public boolean remote() {
         return jarUri != null;
     }

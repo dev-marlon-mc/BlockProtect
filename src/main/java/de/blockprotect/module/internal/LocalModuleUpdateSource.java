@@ -41,7 +41,7 @@ public final class LocalModuleUpdateSource implements ModuleUpdateSource {
             }
             ChecksumVerifier.verify(path, ChecksumVerifier.checksumPath(path));
             return Optional.of(new UpdateDescriptor(
-                    descriptor.id(), descriptor.version(), "lokales Update-Verzeichnis", path, null, null));
+                    descriptor.id(), descriptor.version(), "lokales Update-Verzeichnis", path, null, null, null, null));
         } catch (Exception exception) {
             logger.warning("Lokales Modul-Update ignoriert (" + path.getFileName() + "): " + exception.getMessage());
             return Optional.empty();
